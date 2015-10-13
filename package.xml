@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package>
+  <name>formation_control</name>
+  <version>0.0.0</version>
+  <description>The formation_control package</description>
+  
+  <maintainer email="ivan.loncar2@fer.hr">Ivan Loncar</maintainer>
+  <license>TODO</license>
+  <author email="ivan.loncar2@fer.hr">Ivan Loncar</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>auv_msgs</build_depend>
+  <build_depend>navcon_msgs</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>rospy</build_depend>
+
+  <run_depend>auv_msgs</run_depend>
+  <run_depend>navcon_msgs</run_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>rospy</run_depend>
+
+  
+  <export>
+  </export>
+</package>
