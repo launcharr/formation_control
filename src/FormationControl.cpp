@@ -8,28 +8,57 @@
 #include <auv_msgs/NavSts.h>
 #include <std_msgs/Bool.h>
 
-void init() {}
+class FormControl {
 
-void onManRef(const std_msgs::Bool::ConstPtr& state) {}
+public:
+	void step1(const auv_msgs::NavSts::ConstPtr& state, std::string str) {
 
-void windup(const auv_msgs::BodyForceReq& tauAch) {}
+		ROS_INFO("\n%s vozilo: \n", str.c_str());
+		ROS_INFO("Kutna brzina [%f]\n", state->orientation_rate.yaw);
+		ROS_INFO("Kut: [%f]\n", state->orientation.yaw);
+	}
 
-void idle(const auv_msgs::NavSts& ref, const auv_msgs::NavSts& state,
-		const auv_msgs::BodyVelocityReq& track) {}
+	void init() {
+		ros::NodeHandle nh;
 
-void reset(const auv_msgs::NavSts& ref, const auv_msgs::NavSts& state) {}
+		std::string str[3] = {"Prvo", "Drugo", "Trece"};
 
-auv_msgs::BodyVelocityReqPtr step(const auv_msgs::NavSts& ref,
-					const auv_msgs::NavSts& state) {}
+		state_node[0] = nh.subscribe<auv_msgs::NavSts>("vehicle1/stateHat",1,boost::bind(&FormControl::step1, this, _1, str[0]));
+		state_node[1] = nh.subscribe<auv_msgs::NavSts>("vehicle1/stateHat",1,boost::bind(&FormControl::step1, this, _1, str[1]));
+		state_node[2] = nh.subscribe<auv_msgs::NavSts>("vehicle1/stateHat",1,boost::bind(&FormControl::step1, this, _1, str[2]));
+		}
 
-void initialize_controller() {}
+	void onManRef(const std_msgs::Bool::ConstPtr& state) {}
 
+	void onEstimate() {}
+
+	void windup(const auv_msgs::BodyForceReq& tauAch) {}
+
+	void idle(const auv_msgs::NavSts& ref, const auv_msgs::NavSts& state,
+			const auv_msgs::BodyVelocityReq& track) {}
+
+	void reset(const auv_msgs::NavSts& ref, const auv_msgs::NavSts& state) {}
+
+	auv_msgs::BodyVelocityReqPtr step(const auv_msgs::NavSts& ref,
+						const auv_msgs::NavSts& state) {}
+
+
+	void initialize_controller() {}
+
+private:
+	ros::Subscriber state_node[];
+	auv_msgs::NavSts veh_state;
+
+};
 
 int main(int argc, char **argv)  {
 
-ros::init(argc, argv, "FormationControl");
+	ros::init(argc, argv, "FormationControl");
+	FormControl form;
 
-ros::spin();
+	form.init();
+
+	ros::spin();
 
 return 0;
 }
