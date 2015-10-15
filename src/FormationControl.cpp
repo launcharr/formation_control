@@ -11,9 +11,9 @@
 class FormControl {
 
 public:
-	void step1(const auv_msgs::NavSts::ConstPtr& state, std::string str) {
+	void step1(const auv_msgs::NavSts::ConstPtr& state, int i) {
 
-		ROS_INFO("\n%s vozilo: \n", str.c_str());
+		ROS_INFO("\n%d. vozilo: \n", i+1);
 		ROS_INFO("Kutna brzina [%f]\n", state->orientation_rate.yaw);
 		ROS_INFO("Kut: [%f]\n", state->orientation.yaw);
 	}
@@ -21,11 +21,11 @@ public:
 	void init() {
 		ros::NodeHandle nh;
 
-		std::string str[3] = {"Prvo", "Drugo", "Trece"};
+		std::string nspace[3] = {"vehicle1", "vehicle2", "vehicle3"};
 
-		state_node[0] = nh.subscribe<auv_msgs::NavSts>("vehicle1/stateHat",1,boost::bind(&FormControl::step1, this, _1, str[0]));
-		state_node[1] = nh.subscribe<auv_msgs::NavSts>("vehicle1/stateHat",1,boost::bind(&FormControl::step1, this, _1, str[1]));
-		state_node[2] = nh.subscribe<auv_msgs::NavSts>("vehicle1/stateHat",1,boost::bind(&FormControl::step1, this, _1, str[2]));
+		for(int i=0; i<3; i++){
+			state_node[i] = nh.subscribe<auv_msgs::NavSts>(nspace[i]+"/stateHat",1,boost::bind(&FormControl::step1, this, _1, i));
+			}
 		}
 
 	void onManRef(const std_msgs::Bool::ConstPtr& state) {}
@@ -42,12 +42,28 @@ public:
 	auv_msgs::BodyVelocityReqPtr step(const auv_msgs::NavSts& ref,
 						const auv_msgs::NavSts& state) {}
 
+	void formationChange() {}
 
-	void initialize_controller() {}
+
+	void initialize_controller() {
+		ros::NodeHandle nh;
+
+		nh.param<bool>("FCEnable",FCEnable, false);
+		nh.getParam("VehNum", VehNum);
+		nh.getParam("DGMat", DGMat);
+		nh.getParam("GMat", GMat);
+		nh.getParam("vehNS", vehNS);
+
+	}
 
 private:
 	ros::Subscriber state_node[];
 	auv_msgs::NavSts veh_state;
+	bool FCEnable;
+	int VehNum;
+	int DGMat[]; // Direct graph matrix
+	float GMat[]; // Gain matrix
+	std::string vehNS[];
 
 };
 
