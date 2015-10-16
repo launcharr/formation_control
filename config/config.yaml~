@@ -2,3 +2,4 @@ FCEnable: true
 VehNum: 3
 DGMat: [0, 1, 1, 1, 0, 1, 1, 1, 0]
 GMat: [0, 1.1, 0.9, 0.8, 0, 1.1, 1.2, 1.1, 0]
+vahNS: [vehicle1, vehicle2, vehicle3]
