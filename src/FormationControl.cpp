@@ -13,7 +13,7 @@ class FormControl {
 public:
 	void step1(const auv_msgs::NavSts::ConstPtr& state, int i) {
 
-		ROS_INFO("\n%d. vozilo:", i+1);
+		ROS_INFO("\n%d. vozilo: ", i+1);
 		ROS_INFO("\nVehNS: %s\n\n", VehNS[i].c_str());
 	}
 
