@@ -14,23 +14,26 @@ public:
 	void step1(const auv_msgs::NavSts::ConstPtr& state, int i) {
 
 		ROS_INFO("\n%d. vozilo:", i+1);
-
-		if(FCEnable) {
-			ROS_INFO("\nVehNum: %d\n\n", VehNum);
-			ROS_INFO("\nVehNS: ");
-			}
+		ROS_INFO("\nVehNS: %s\n\n", VehNS[i].c_str());
 	}
 
 	void init() {
 		ros::NodeHandle nh;
 
-		std::string nspace[3] = {"vehicle1", "vehicle2", "vehicle3"};
+		ROS_INFO("Controler init...\n");
 
-		for(int i=0; i<3; i++){
-			state_node[i] = nh.subscribe<auv_msgs::NavSts>(nspace[i]+"/stateHat",1,boost::bind(&FormControl::step1, this, _1, i));
+		nh.param("/FCEnable",FCEnable, false);
+		nh.param<int>("/VehNum", VehNum, 0);
+
+		if(FCEnable && VehNum > 0) {
+			nh.getParam("/VehNS", VehNS);
+
+			for(int i=0; i<VehNum; i++){
+				StateNode[i] = nh.subscribe<auv_msgs::NavSts>(VehNS[i]+"/stateHat",1,boost::bind(&FormControl::step1, this, _1, i));
 			}
 		FormControl::initialize_controller();
 		}
+	}
 
 	void onManRef(const std_msgs::Bool::ConstPtr& state) {}
 
@@ -52,22 +55,21 @@ public:
 	void initialize_controller() {
 		ros::NodeHandle nh;
 
-		nh.param("/FCEnable",FCEnable, false);
-		nh.param<int>("/VehNum", VehNum, 0);
 		nh.getParam("/DGMat", DGMat);
 		nh.getParam("/GMat", GMat);
-		nh.getParam("/VehNS", VehNS);
-
+		nh.getParam("/FormX", FormX);
+		nh.getParam("/FormY", FormY);
 	}
 
 private:
-	ros::Subscriber state_node[];
-	auv_msgs::NavSts veh_state;
+	ros::Subscriber StateNode[];
+	auv_msgs::NavSts VehState;
 	bool FCEnable;
 	int VehNum;
-	std::map<std::string, int> DGMat;
-	std::map<std::string, float> GMat;
-	std::map<std::string, std::string> VehNS;
+	std::vector<int> DGMat; // direct graph matrix
+	std::vector<double> GMat; // gain matrix
+	std::vector<double> FormX, FormY; // formation distances matrix
+	std::vector<std::string> VehNS; // vehicle namespaces
 
 
 };
@@ -75,9 +77,9 @@ private:
 int main(int argc, char **argv)  {
 
 	ros::init(argc, argv, "FormationControl");
-	FormControl form;
+	FormControl fctrl;
 
-	form.init();
+	fctrl.init();
 
 	ros::spin();
 
