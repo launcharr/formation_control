@@ -1,0 +1,14 @@
+FCEnable: true
+VehNum: 1
+
+# Direct graph matrix
+DGMat: 1
+
+# Gain matrix
+GMat: 1
+
+# Formation distances matrix
+FormX: 0
+FormY: 0
+
+

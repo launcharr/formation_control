@@ -18,8 +18,9 @@
 		<rosparam command="load" file="$(find launch_templates)/example/config/navparams_ex.yaml" />
 		<!-- Control parameters -->
 		<rosparam command="load" file="$(find launch_templates)/example/config/control.yaml" /> 
+
 			
-	
+		
 		<!-- ========================================================= -->
 	    <!-- == Launch settings ====================================== -->
 	    <!-- ========================================================= -->
@@ -38,7 +39,7 @@
 			<arg name="labust_mission" value="$(optenv USE_MC 0)" />
 			<arg name="labust_sim" value="$(optenv IS_SIM 0)" />
 <!--			<arg name="labust_visualization" value="$(optenv USE_VISUALIZATION 0)" /> -->
-<!--			-->
+			 
 			<!-- Manual control settings ============================= -->
 			<arg name="use_joy" value="$(optenv USE_JOY 0)" />
 			<arg name="joy_dev" value="$(optenv JOYSTICK /dev/input/js0)" /> 
@@ -58,22 +59,24 @@
 			<arg name="mission_parser" value="true" />
 			
 			<!-- Visualization settings ============================== -->
-			<arg name="config_file" value="$(find labust_uwsim)/scenes/labust_mission_test/test_environment.xml" />
+			<arg name="config_file" value="$(find labust_uwsim)/scenes/labust_mission_test/test_environment_moje.xml" />
 			
-						
+			
 		</include>
 	
+		
 		<node
-        pkg="labust_uwsim" 
-        type="navsts2odom.py" 
-        name="vehicle2uwsim">
-
-        <!--<remap from="stateHat" to="stateHatAbs" />-->
-        <!--<remap from="uwsim_hook" to="uwsim_hook" />-->
-        <!--<param name="base_frame" value="base_link_abs" />-->
-        
+	        pkg="labust_uwsim" 
+	        type="navsts2odom.py" 
+	        name="vehicle2uwsim">
+	
+	        <!--<remap from="stateHat" to="stateHatAbs" />-->
+	        <!--<remap from="uwsim_hook" to="uwsim_hook" />-->
+	        <!--<param name="base_frame" value="base_link_abs" />-->
+	        
     	</node>
 		
+	
 	    <!-- ========================================================= -->
 	    <!-- == Rosbag and multimaster includes ====================== -->
 	    <!-- ========================================================= -->
@@ -88,23 +91,7 @@
 		<include 
 			if="$(optenv USE_MULTIMASTER 0)" 
 			file="$(find split0914_hrm)/launch/pladypos/pladypos/multi_master.launch" />
-				
-		<rosparam command="load" file="$(find formation_control)/config/config.yaml" /> 			
-	  	<rosparam param="CurrentVeh">0</rosparam>
-	  	<rosparam param="ParentNS">[/,/,/]</rosparam>
 	
-	  	<!--<rosparam>
-	  		ParentNS: [/,/,/] 
-	  		CurrentVeh: 0
-	  	</rosparam>  -->
-	  	
-	  	
-	  	<node pkg="formation_control"
-	  		  name="formationControl"
-	  		  type="FormationControl"
-	  		  output="screen">
-		</node>
-				
 	</group>
 
  	<group ns="vehicle2">		
@@ -191,15 +178,6 @@
 			if="$(optenv USE_MULTIMASTER 0)" 
 			file="$(find split0914_hrm)/launch/pladypos/pladypos/multi_master.launch" />
 		
-		<rosparam command="load" file="$(find formation_control)/config/config.yaml" /> 			
-	  	<rosparam param="CurrentVeh">1</rosparam>
-	  	<rosparam param="ParentNS">[/,/,/]</rosparam>
-	  	
-	  	<node pkg="formation_control"
-	  		  name="formationControl"
-	  		  type="FormationControl"
-	  		  >
-		</node>
 	</group>
  
  	 <group ns="vehicle3">		
@@ -285,26 +263,47 @@
 		<include 
 			if="$(optenv USE_MULTIMASTER 0)" 
 			file="$(find split0914_hrm)/launch/pladypos/pladypos/multi_master.launch" />
-
-		<rosparam command="load" file="$(find formation_control)/config/config.yaml" /> 			
-	  	<rosparam param="CurrentVeh">2</rosparam>
-	  	<rosparam param="ParentNS">[/,/,/]</rosparam>
+			
+									
+ 	</group>	
+ 	
+ 	<group ns="vehicle1">
+ 		
+ 		<rosparam command="load" file="$(find formation_control)/config/config.yaml" /> 			
+	  	<rosparam param="CurrentVeh">0</rosparam>
+	  	<rosparam param="ParentNS">[/vehicle1,/vehicle2,/vehicle3]</rosparam>
 	  	
 	  	<node pkg="formation_control"
-	  		  name="formationControl"
+	  		  name="formationControl1"
+	  		  type="FormationControl">
+		</node>
+ 		
+ 	</group>
+ 	<group ns="vehicle2">
+ 		
+ 		<rosparam command="load" file="$(find formation_control)/config/config.yaml" /> 			
+	  	<rosparam param="CurrentVeh">1</rosparam>
+	  	<rosparam param="ParentNS">[/vehicle1,/vehicle2,/vehicle3]</rosparam>
+	  	
+	  	<node pkg="formation_control"
+	  		  name="formationControl2"
+	  		  type="FormationControl"
+	  		  output="screen">
+		</node>
+ 		
+ 	</group>
+ 	<group ns="vehicle3">
+ 		
+ 		<rosparam command="load" file="$(find formation_control)/config/config.yaml" /> 			
+	  	<rosparam param="CurrentVeh">2</rosparam>
+	  	<rosparam param="ParentNS">[/vehicle1,/vehicle2,/vehicle]</rosparam>
+	  	
+	  	<node pkg="formation_control"
+	  		  name="formationControl3"
 	  		  type="FormationControl"
 	  		  >
-		</node>				
-									
+		</node>	
  	</group>
- 	
-	<node   pkg="uwsim" 
-        	name="uwsim" 
-        	type="uwsim" 
-        	args="--configfile $(find labust_uwsim)/scenes/labust_mission_test/test_environment_moje.xml
-  			--dataPath  $(find labust_uwsim)/urdf/caddy/">				
-  	</node>
-  	
 
 	
 </launch>

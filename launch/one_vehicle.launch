@@ -1,0 +1,78 @@
+<!--/*****************************************************************
+ * EXAMPLE.launch
+ *
+ *  Created on: Oct 30, 2014
+ *      Author: Filip Mandic
+ *
+ *****************************************************************/-->
+
+
+ <launch>	
+
+	<group ns="vehicle0">		
+			
+		<!-- Location parameters -->
+		<rosparam command="load" file="$(find snippets)/data/locations/$(env LOCATION).yaml" />
+		<!-- Vehicle model -->
+		<rosparam command="load" file="$(env MODEL)" />
+		<!-- Navigation filter parameters -->
+		<rosparam command="load" file="$(find launch_templates)/example/config/navparams_ex.yaml" />
+		<!-- Control parameters -->
+		<rosparam command="load" file="$(find launch_templates)/example/config/control.yaml" /> 
+
+			
+		
+		<!-- ========================================================= -->
+	    <!-- == Launch settings ====================================== -->
+	    <!-- ========================================================= -->
+
+		<include file="$(find launch_templates)/launch/labust_main_template.launch">
+	
+			<!-- Vehicle settings ======================================== -->
+			<arg name="vehicle" value ="$(env VEHICLE)" /> 
+			<arg name="topside" value="false" />
+	
+			<!-- Select templates to include -->
+			<arg name="labust_manual" value="true" />
+			<arg name="labust_navigation" value="true" />
+			<arg name="labust_control" value="true" />
+			<arg name="labust_primitives" value="true" />
+			<arg name="labust_mission" value="$(optenv USE_MC 0)" />
+			<arg name="labust_sim" value="$(optenv IS_SIM 0)" />
+<!--			<arg name="labust_visualization" value="$(optenv USE_VISUALIZATION 0)" /> -->
+			 
+			<!-- Manual control settings ============================= -->
+			<arg name="use_joy" value="$(optenv USE_JOY 0)" />
+			<arg name="joy_dev" value="$(optenv JOYSTICK /dev/input/js0)" /> 
+				
+			<!-- Control settings ==================================== -->
+			<arg name="use_ident" value="$(optenv USE_IDENTIFICATION 0)" />
+			<arg name="use_trackpoint" value="false" />
+		 
+			<!-- Navigation settings ================================= -->
+			<arg name="ekfAbs" value="false" />
+			<arg name="ekfSB" value="false" />
+	
+			<!-- Mission execution settings ========================== -->
+			<arg name="labust_mission_path" value="$(find labust_mission)" /> 
+			<arg name="xml_save_path" value="$(find labust_mission)/data/mission.xml" /> 
+			<arg name="neptus_parser" value="true" />
+			<arg name="mission_parser" value="true" />
+			
+			<!-- Visualization settings ============================== -->
+			<arg name="config_file" value="$(find labust_uwsim)/scenes/labust_mission_test/test_environment_moje.xml" />
+		</include>
+ 		
+ 		<rosparam command="load" file="$(find formation_control)/config/config_one.yaml" /> 			
+	  	<rosparam param="CurrentVeh">0</rosparam>
+	  	<rosparam param="ParentNS">[/vehicle0]</rosparam>
+	  	
+	  	<node pkg="formation_control"
+	  		  name="formationControl"
+	  		  type="FormationControl"
+	  		  output="screen">
+		</node>	
+		
+	</group>
+	
+</launch>

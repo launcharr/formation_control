@@ -1,6 +1,6 @@
 FCEnable: true
 VehNum: 3
-VehNS: [/vehicle1, /vehicle2, /vehicle3]
+VehNS: [vehicle0, vehicle2, vehicle3]
 
 # Direct graph matrix
 DGMat: [0, 1, 1, 1, 0, 1, 1, 1, 0]
