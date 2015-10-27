@@ -24,7 +24,7 @@ export USE_LOCAL_FIX=1
 
 #Control configuration
 export USE_IDENTIFICATION=1
-export USE_MC=1
+export USE_MC=0
 export USE_MULTIMASTER=0
 
 #Frame description

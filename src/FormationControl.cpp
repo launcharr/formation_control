@@ -42,18 +42,14 @@ public:
 
 		ROS_INFO("\n\n\n\nControler init...\n\n\n\n");
 
-//		nh.getParam("VehNum", VehNum);
-//		NVeh = VehNum;
-
 		nh.getParam("ParentNS", ParentNS);
 		nh.getParam("CurrentVeh", CurrentVeh);
 
 //		client = nh.serviceClient<navcon_msgs::ConfigureVelocityControllerRequest>(ParentNS[CurrentVeh]+"/ConfigureVelocityController");
 
-
 		ROS_INFO("CurrentVeh = %d\n", CurrentVeh);
 		ROS_INFO("VehNum = %d\n", VehNum);
-//		ROS_INFO("NVeh = %d\n", NVeh);
+
 		for(int i=0; i<VehNum; i++){
 //				ROS_INFO("i = %d\n", i);
 			StateNode[i] = nh.subscribe<auv_msgs::NavSts>(ParentNS[i]+"/stateHat",2,boost::bind(&FormControl::onEstimate, this, _1, i));
@@ -66,12 +62,6 @@ public:
 		initialize_controller();
 		ROS_INFO("\n\n\n\nControler init finished...\n\n\n\n");
 
-//		for(int i=0; i <VehNum; i++) {
-//			for(int j=0; j<VehNum;j++){
-//				ROS_INFO("DGMat[%d][%d] = %d\tGMat[%d][%d] = %f\nFormX[%d][%d] = %f\tFormY[%d][%d] = %f\n", i, j, DGMat[i*VehNum + j], i, j,GMat[i*VehNum + j], i, j, FormX[i*VehNum + j], i, j, FormY[i*VehNum + j]);
-//			}
-//		}
-
 	}
 
 	void onEstimate(const auv_msgs::NavSts::ConstPtr& state, const int& i) {
@@ -82,6 +72,8 @@ public:
 			ROS_INFO("onEstimate i = %d", i);
 			VehState[i].position.east = state->position.east;
 			VehState[i].position.north = state->position.north;
+			VehState[i].body_velocity.x = state->body_velocity.x;
+			VehState[i].body_velocity.y = state->body_velocity.y;
 			FCGotState[i] = true;
 			FCStart = true;
 
@@ -101,12 +93,19 @@ public:
 
 	void ControlLaw() {
 
-		double XCurr, YCurr, Xi, Yi, G, FX, FY;
+		double XCurr, YCurr, Xi, Yi, VxCurr, VyCurr, Vxi, Vyi, G, FX, FY;
 		int DG;
 		XCurr = VehState[CurrentVeh].position.east;
 		YCurr = VehState[CurrentVeh].position.north;
+		VxCurr = VehState[CurrentVeh].body_velocity.x;
+		VyCurr = VehState[CurrentVeh].body_velocity.y;
 
 //		ROS_INFO("XCurr = %f \tYCurr = %f", XCurr, YCurr);
+		ROS_INFO("Stvarna brzina u X = %f\n",VxCurr);
+		ROS_INFO("Stvarna brzina u Y = %f\n",VyCurr);
+
+		VelConReq.twist.linear.x = 0;
+		VelConReq.twist.linear.y = 0;
 
 		for(int i=0; i<VehNum; i++){
 			if(i!=CurrentVeh){
@@ -116,11 +115,14 @@ public:
 				G = GMat[CurrentVeh*VehNum + i];
 				FX = scaleX*FormX[CurrentVeh*VehNum + i];
 				FY = scaleY*FormY[CurrentVeh*VehNum + i];
+				Vxi = VehState[i].body_velocity.x;
+				Vyi = VehState[i].body_velocity.y;
 
 				ROS_INFO("Udaljenost od %d X = %f\n", i,XCurr - Xi);
 				ROS_INFO("Udaljenost od %d Y = %f\n", i,YCurr - Yi);
-				VelConReq.twist.linear.x = VelConReq.twist.linear.x - DG*G*(XCurr - Xi + FX);
-				VelConReq.twist.linear.y = VelConReq.twist.linear.y - DG*G*(YCurr - Yi + FY);
+
+				VelConReq.twist.linear.x = VelConReq.twist.linear.x - DG*G*(XCurr - Xi + FX + gamma*(VxCurr - Vxi));
+				VelConReq.twist.linear.y = VelConReq.twist.linear.y + DG*G*(YCurr - Yi + FY + gamma*(VxCurr - Vxi));
 			}
 		}
 
@@ -142,19 +144,6 @@ public:
 
 	}
 
-	double gain(const int& i) {
-		return DGMat[CurrentVeh*VehNum + i]*GMat[CurrentVeh*VehNum + i];
-	}
-
-	double scaleForm(const char& a, const int& i) {
-		if(a=='x' || a=='X')
-			return scaleX*FormX[CurrentVeh*VehNum + i];
-		else {
-			return scaleY*FormY[CurrentVeh*VehNum + i];
-			ROS_INFO("\n\n\nRADIIII\n\n\n");
-		}
-	}
-
 	void onManRef(const std_msgs::Bool::ConstPtr& state) {}
 
 	void windup(const auv_msgs::BodyForceReq& tauAch) {}
@@ -173,6 +162,7 @@ public:
 		nh.getParam("GMat", GMat);
 		nh.getParam("FormX", FormX);
 		nh.getParam("FormY", FormY);
+		nh.param("gamma",gamma, 0.1);
 //		nh.param("nu_manual/maximum_speeds",MaxSpeed, {0.05,0.05,0.05,0,0,0.5});
 		nh.getParam("nu_manual/maximum_speeds",MaxSpeed);
 		ROS_INFO("MaxSped[1] = %f\tMaxSpeed[2] = %f",MaxSpeed[1], MaxSpeed[2]);
@@ -194,6 +184,7 @@ private:
 	bool FCTempStart;
 	int VehNum;
 	int CurrentVeh;
+	double gamma;
 	std::vector<std::string> ParentNS;
 	std::vector<int> DGMat; // direct graph matrix
 	std::vector<double> GMat; // gain matrix
