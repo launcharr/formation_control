@@ -18,8 +18,7 @@
 		<rosparam command="load" file="$(find launch_templates)/example/config/navparams_ex.yaml" />
 		<!-- Control parameters -->
 		<rosparam command="load" file="$(find launch_templates)/example/config/control.yaml" /> 
-
-			
+	
 		
 		<!-- ========================================================= -->
 	    <!-- == Launch settings ====================================== -->
@@ -35,7 +34,7 @@
 			<arg name="labust_manual" value="true" />
 			<arg name="labust_navigation" value="true" />
 			<arg name="labust_control" value="true" />
-			<arg name="labust_primitives" value="true" />
+			<arg name="labust_primitives" value="false" />
 			<arg name="labust_mission" value="$(optenv USE_MC 0)" />
 			<arg name="labust_sim" value="$(optenv IS_SIM 0)" />
 <!--			<arg name="labust_visualization" value="$(optenv USE_VISUALIZATION 0)" /> -->
@@ -55,15 +54,15 @@
 			<!-- Mission execution settings ========================== -->
 			<arg name="labust_mission_path" value="$(find labust_mission)" /> 
 			<arg name="xml_save_path" value="$(find labust_mission)/data/mission.xml" /> 
-			<arg name="neptus_parser" value="true" />
-			<arg name="mission_parser" value="true" />
+			<arg name="neptus_parser" value="false" />
+			<arg name="mission_parser" value="false" />
 			
 			<!-- Visualization settings ============================== -->
 			<arg name="config_file" value="$(find labust_uwsim)/scenes/labust_mission_test/test_environment_moje.xml" />
 			
 			
 		</include>
-	
+		<rosparam  param="eta0"> [5,5,0,0,0,1.0] </rosparam>
 		
 		<node
 	        pkg="labust_uwsim" 
@@ -121,7 +120,7 @@
 			<arg name="labust_manual" value="true" />
 			<arg name="labust_navigation" value="true" />
 			<arg name="labust_control" value="true" />
-			<arg name="labust_primitives" value="true" />
+			<arg name="labust_primitives" value="false" />
 			<arg name="labust_mission" value="$(optenv USE_MC 0)" />
 			<arg name="labust_sim" value="$(optenv IS_SIM 0)" />
 <!--			<arg name="labust_visualization" value="$(optenv USE_VISUALIZATION 0)" /> -->
@@ -141,15 +140,16 @@
 			<!-- Mission execution settings ========================== -->
 			<arg name="labust_mission_path" value="$(find labust_mission)" /> 
 			<arg name="xml_save_path" value="$(find labust_mission)/data/mission.xml" /> 
-			<arg name="neptus_parser" value="true" />
-			<arg name="mission_parser" value="true" />
+			<arg name="neptus_parser" value="false" />
+			<arg name="mission_parser" value="false" />
 			
 			<!-- Visualization settings ============================== -->
 			<arg name="config_file" value="$(find labust_uwsim)/scenes/labust_mission_test/test_environment_moje.xml" />
 			
 			
 		</include>
-	
+		
+		<rosparam  param="eta0"> [-5,5,0,0,0,1.0] </rosparam>	
 		
 		<node
 	        pkg="labust_uwsim" 
@@ -180,7 +180,7 @@
 		
 	</group>
  
- 	 <group ns="vehicle3">		
+ 	<group ns="vehicle3">		
 		
 		<!-- Location parameters -->
 		<rosparam command="load" file="$(find snippets)/data/locations/$(env LOCATION).yaml" />
@@ -191,7 +191,7 @@
 		<!-- Control parameters -->
 		<rosparam command="load" file="$(find launch_templates)/example/config/control.yaml" /> 
 
-			
+					
 		
 		<!-- ========================================================= -->
 	    <!-- == Launch settings ====================================== -->
@@ -207,7 +207,7 @@
 			<arg name="labust_manual" value="true" />
 			<arg name="labust_navigation" value="true" />
 			<arg name="labust_control" value="true" />
-			<arg name="labust_primitives" value="true" />
+			<arg name="labust_primitives" value="false" />
 			<arg name="labust_mission" value="$(optenv USE_MC 0)" />
 			<arg name="labust_sim" value="$(optenv IS_SIM 0)" />
 <!--			<arg name="labust_visualization" value="$(optenv USE_VISUALIZATION 0)" /> -->
@@ -227,8 +227,8 @@
 			<!-- Mission execution settings ========================== -->
 			<arg name="labust_mission_path" value="$(find labust_mission)" /> 
 			<arg name="xml_save_path" value="$(find labust_mission)/data/mission.xml" /> 
-			<arg name="neptus_parser" value="true" />
-			<arg name="mission_parser" value="true" />
+			<arg name="neptus_parser" value="false" />
+			<arg name="mission_parser" value="false" />
 			
 			<!-- Visualization settings ============================== -->
 			<arg name="config_file" value="$(find labust_uwsim)/scenes/labust_mission_test/test_environment_moje.xml" />
@@ -236,6 +236,7 @@
 			
 		</include>
 	
+		<rosparam  param="eta0"> [5,-5,0,0,0,1.0] </rosparam>	
 		
 		<node
 	        pkg="labust_uwsim" 
@@ -308,7 +309,7 @@
 	<node   pkg="uwsim" 
         	name="uwsim" 
         	type="uwsim" 
-        	args="--configfile $(find labust_uwsim)/scenes/labust_mission_test/test_environment_moje.xml
+        	args="--configfile $(find formation_control)/scenes/test_environment_moje.xml
   			--dataPath  $(find labust_uwsim)/urdf/caddy/">				
   	</node>
   	
