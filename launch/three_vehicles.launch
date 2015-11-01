@@ -62,13 +62,14 @@
 			
 			
 		</include>
-		<rosparam  param="eta0"> [5,5,0,0,0,1.0] </rosparam>
+		<rosparam  param="eta0"> [5,5,0,0,0,0.5] </rosparam>
 		
 		<node
-	        pkg="labust_uwsim" 
-	        type="navsts2odom.py" 
+	        pkg="labust_sim" 
+	        type="navsts2odom" 
 	        name="vehicle2uwsim">
 	
+	        <remap from="navsts" to="stateHat"/>	
 	        <!--<remap from="stateHat" to="stateHatAbs" />-->
 	        <!--<remap from="uwsim_hook" to="uwsim_hook" />-->
 	        <!--<param name="base_frame" value="base_link_abs" />-->
@@ -152,10 +153,11 @@
 		<rosparam  param="eta0"> [-5,5,0,0,0,1.0] </rosparam>	
 		
 		<node
-	        pkg="labust_uwsim" 
-	        type="navsts2odom.py" 
+	        pkg="labust_sim" 
+	        type="navsts2odom" 
 	        name="vehicle2uwsim">
 	
+	        <remap from="navsts" to="stateHat"/>	
 	        <!--<remap from="stateHat" to="stateHatAbs" />-->
 	        <!--<remap from="uwsim_hook" to="uwsim_hook" />-->
 	        <!--<param name="base_frame" value="base_link_abs" />-->
@@ -236,13 +238,14 @@
 			
 		</include>
 	
-		<rosparam  param="eta0"> [5,-5,0,0,0,1.0] </rosparam>	
+		<rosparam  param="eta0"> [5,-5,0,0,0,1.5] </rosparam>	
 		
 		<node
-	        pkg="labust_uwsim" 
-	        type="navsts2odom.py" 
+	        pkg="labust_sim" 
+	        type="navsts2odom" 
 	        name="vehicle2uwsim">
 	
+	        <remap from="navsts" to="stateHat"/>	
 	        <!--<remap from="stateHat" to="stateHatAbs" />-->
 	        <!--<remap from="uwsim_hook" to="uwsim_hook" />-->
 	        <!--<param name="base_frame" value="base_link_abs" />-->

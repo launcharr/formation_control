@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
+#include <math.h>
 
 #include <auv_msgs/BodyVelocityReq.h>
 #include <auv_msgs/BodyForceReq.h>
@@ -10,6 +11,8 @@
 #include <navcon_msgs/ConfigureVelocityController.h>
 #define scaleX 1
 #define scaleY 1
+#define MaxSpeedX 0.9
+#define MaxSpeedY 0.9
 
 class FormControl {
 
@@ -74,6 +77,8 @@ public:
 			VehState[i].position.north = state->position.north;
 			VehState[i].body_velocity.x = state->body_velocity.x;
 			VehState[i].body_velocity.y = state->body_velocity.y;
+			VehState[i].orientation.yaw = state->orientation.yaw;
+			VehState[i].orientation_rate.yaw = state->orientation_rate.yaw;
 			FCGotState[i] = true;
 			FCStart = true;
 
@@ -93,24 +98,27 @@ public:
 
 	void ControlLaw() {
 
-		double XCurr, YCurr, Xi, Yi, VxCurr, VyCurr, Vxi, Vyi, G, FX, FY;
+		double XCurr, YCurr, Xi, Yi, VxCurr, VyCurr, Vxi, Vyi, G, FX, FY, YawCurr, YawRateCurr, yaw, speedX, speedY;
 		int DG;
-		XCurr = VehState[CurrentVeh].position.east;
-		YCurr = VehState[CurrentVeh].position.north;
+		ros::NodeHandle nh;
+		YCurr = VehState[CurrentVeh].position.east;
+		XCurr = VehState[CurrentVeh].position.north;
 		VxCurr = VehState[CurrentVeh].body_velocity.x;
 		VyCurr = VehState[CurrentVeh].body_velocity.y;
+		YawCurr = VehState[CurrentVeh].orientation.yaw;
+		YawRateCurr = VehState[CurrentVeh].orientation_rate.yaw;
 
 //		ROS_INFO("XCurr = %f \tYCurr = %f", XCurr, YCurr);
-		ROS_INFO("Stvarna brzina u X = %f\n",VxCurr);
-		ROS_INFO("Stvarna brzina u Y = %f\n",VyCurr);
+//		ROS_INFO("Stvarna brzina u X = %f\n",VxCurr);
+//		ROS_INFO("Stvarna brzina u Y = %f\n",VyCurr);
 
 		VelConReq.twist.linear.x = 0;
 		VelConReq.twist.linear.y = 0;
 
 		for(int i=0; i<VehNum; i++){
 			if(i!=CurrentVeh){
-				Xi = VehState[i].position.east;
-				Yi = VehState[i].position.north;
+				Yi = VehState[i].position.east;
+				Xi = VehState[i].position.north;
 				DG = DGMat[CurrentVeh*VehNum + i];
 				G = GMat[CurrentVeh*VehNum + i];
 				FX = scaleX*FormX[CurrentVeh*VehNum + i];
@@ -122,19 +130,33 @@ public:
 				ROS_INFO("Udaljenost od %d Y = %f\n", i,YCurr - Yi);
 
 				VelConReq.twist.linear.x = VelConReq.twist.linear.x - DG*G*(XCurr - Xi + FX + gamma*(VxCurr - Vxi));
-				VelConReq.twist.linear.y = VelConReq.twist.linear.y + DG*G*(YCurr - Yi + FY + gamma*(VxCurr - Vxi));
+				VelConReq.twist.linear.y = VelConReq.twist.linear.y - DG*G*(YCurr - Yi + FY + gamma*(VxCurr - Vxi));
 			}
 		}
 
-		if(VelConReq.twist.linear.x > MaxSpeed[1])
-			VelConReq.twist.linear.x = MaxSpeed[1];
-		else if (VelConReq.twist.linear.x < -MaxSpeed[1])
-			VelConReq.twist.linear.x = -MaxSpeed[1];
+		nh.param("speedX",speedX, 0.);
+		nh.param("speedY",speedY, 0.);
+		VelConReq.twist.linear.x += speedX;
+		VelConReq.twist.linear.y += speedY;
 
-		if(VelConReq.twist.linear.y > MaxSpeed[2])
-			VelConReq.twist.linear.y = MaxSpeed[2];
-		else if (VelConReq.twist.linear.y < -MaxSpeed[2])
-			VelConReq.twist.linear.y = -MaxSpeed[2];
+		double tempX = VelConReq.twist.linear.x, tempY = VelConReq.twist.linear.y;
+
+		VelConReq.twist.linear.x = tempX*cos(YawCurr + Ts*YawRateCurr) + tempY*sin(YawCurr + Ts*YawRateCurr);
+//		VelConReq.twist.linear.y = 0;
+		VelConReq.twist.linear.y = -tempX*sin(YawCurr + Ts*YawRateCurr) + tempY*cos(YawCurr + Ts*YawRateCurr);
+
+		if(VelConReq.twist.linear.x > MaxSpeedX)
+			VelConReq.twist.linear.x = MaxSpeedX;
+		else if (VelConReq.twist.linear.x < -MaxSpeedX)
+			VelConReq.twist.linear.x = -MaxSpeedX;
+
+		if(VelConReq.twist.linear.y > MaxSpeedY)
+			VelConReq.twist.linear.y = MaxSpeedY;
+		else if (VelConReq.twist.linear.y < -MaxSpeedY)
+			VelConReq.twist.linear.y = -MaxSpeedY;
+
+		nh.param("yaw",yaw,0.);
+		VelConReq.twist.angular.z = yaw;
 
 		ROS_INFO("VelX = %f\n", VelConReq.twist.linear.x);
 		ROS_INFO("VelY = %f\n", VelConReq.twist.linear.y);
@@ -163,9 +185,8 @@ public:
 		nh.getParam("FormX", FormX);
 		nh.getParam("FormY", FormY);
 		nh.param("gamma",gamma, 0.1);
+		nh.param("Ts",Ts, 0.7);
 //		nh.param("nu_manual/maximum_speeds",MaxSpeed, {0.05,0.05,0.05,0,0,0.5});
-		nh.getParam("nu_manual/maximum_speeds",MaxSpeed);
-		ROS_INFO("MaxSped[1] = %f\tMaxSpeed[2] = %f",MaxSpeed[1], MaxSpeed[2]);
 		for(int i=0; i<VehNum;i++)
 			FCGotState[i] = false;
 		FCStart = false;
@@ -184,7 +205,7 @@ private:
 	bool FCTempStart;
 	int VehNum;
 	int CurrentVeh;
-	double gamma;
+	double gamma, Ts;
 	std::vector<std::string> ParentNS;
 	std::vector<int> DGMat; // direct graph matrix
 	std::vector<double> GMat; // gain matrix
