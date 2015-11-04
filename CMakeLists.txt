@@ -9,8 +9,23 @@ find_package(catkin REQUIRED COMPONENTS
   navcon_msgs
   roscpp
   rospy
+  message_generation
 )
 
+add_message_files(
+  FILES
+  Formation.msg
+)
+
+add_service_files(
+  FILES
+  FormChange.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 
 ###################################
 ## catkin specific configuration ##

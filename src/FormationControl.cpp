@@ -8,7 +8,11 @@
 #include <auv_msgs/BodyForceReq.h>
 #include <auv_msgs/NavSts.h>
 #include <std_msgs/Bool.h>
+#include <std_msgs/Float64MultiArray.h>
 #include <navcon_msgs/ConfigureVelocityController.h>
+#include <navcon_msgs/EnableControl.h>
+#include <formation_control/Formation.h>
+
 #define scaleX 1
 #define scaleY 1
 #define MaxSpeedX 0.9
@@ -21,14 +25,16 @@ public:
 	FormControl(){
 		ros::NodeHandle nh;
 
-		nh.param("FCEnable",FCEnable, false);
+		ControlEnable = nh.subscribe<std_msgs::Bool>("/FCEnable", 2, &FormControl::EnableController, this);
+
+//		nh.param("FCEnable",FCEnable, false);
 		nh.param("VehNum", VehNum, 0);
 //		nh.getParam("VehNum", VehNum);
-		if(FCEnable && VehNum > 0) {
+		if(VehNum > 0) {
 			FCGotState = new bool[VehNum];
 			VehState = new auv_msgs::NavSts[VehNum];
 			StateNode = new ros::Subscriber[VehNum];
-			init();
+//			init();
 		}
 	}
 
@@ -40,26 +46,30 @@ public:
 
 	void init() {
 		ros::NodeHandle nh;
-//		ros::ServiceClient client;
-//		navcon_msgs::ConfigureVelocityController req;
 
 		ROS_INFO("\n\n\n\nControler init...\n\n\n\n");
 
 		nh.getParam("ParentNS", ParentNS);
 		nh.getParam("CurrentVeh", CurrentVeh);
 
-//		client = nh.serviceClient<navcon_msgs::ConfigureVelocityControllerRequest>(ParentNS[CurrentVeh]+"/ConfigureVelocityController");
 
-		ROS_INFO("CurrentVeh = %d\n", CurrentVeh);
-		ROS_INFO("VehNum = %d\n", VehNum);
-
+		// subscribe to all vehicle states
 		for(int i=0; i<VehNum; i++){
 //				ROS_INFO("i = %d\n", i);
 			StateNode[i] = nh.subscribe<auv_msgs::NavSts>(ParentNS[i]+"/stateHat",2,boost::bind(&FormControl::onEstimate, this, _1, i));
 
 //			ROS_INFO("SubscriberNS = %s\n", (ParentNS[i]+"/stateHat").c_str());
 		}
+
+		// pusblish velocity request
 		VelConNode = nh.advertise<auv_msgs::BodyVelocityReq>(ParentNS[CurrentVeh]+"/nuRef", 1);
+
+		//configure velocity controller service
+		ConfVelCon = nh.serviceClient<navcon_msgs::ConfigureVelocityController>(ParentNS[CurrentVeh]+"/ConfigureVelocityController");
+
+		//formation change topic
+		FormChange = nh.subscribe<formation_control::Formation>("/FormChange", 1, &FormControl::formationChange, this);
+
 
 //		ROS_INFO("PublisherNS = %s\n", (ParentNS[CurrentVeh]+"/nuRef").c_str());
 		initialize_controller();
@@ -87,9 +97,9 @@ public:
 				FCStart = FCStart && FCGotState[j];
 //				ROS_INFO("FCGotState[%d] = %d\n",j, FCGotState[j]);
 			}
-			nh.getParam("/FCTempStart", FCTempStart);
+//			nh.getParam("/FCTempStart", FCTempStart);
 
-			if(FCStart && FCTempStart) {
+			if(FCStart && FCEnable) {
 				ROS_INFO("ControlLaw\n");
 				ControlLaw();
 			}
@@ -134,10 +144,13 @@ public:
 			}
 		}
 
+		// "manual" control for testing
 		nh.param("speedX",speedX, 0.);
 		nh.param("speedY",speedY, 0.);
+		nh.param("yaw",yaw,0.);
 		VelConReq.twist.linear.x += speedX;
 		VelConReq.twist.linear.y += speedY;
+		VelConReq.twist.angular.z = yaw;
 
 		// rotate from NED to robot base coordinate system
 		rotateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, YawCurr + Ts*YawRateCurr);
@@ -146,11 +159,14 @@ public:
 		saturate(VelConReq.twist.linear.x, MaxSpeedX, -MaxSpeedX);
 		saturate(VelConReq.twist.linear.y, MaxSpeedY, -MaxSpeedY);
 
-		nh.param("yaw",yaw,0.);
-		VelConReq.twist.angular.z = yaw;
 
 		ROS_INFO("VelX = %f\n", VelConReq.twist.linear.x);
 		ROS_INFO("VelY = %f\n", VelConReq.twist.linear.y);
+
+		// disable axis
+		VelConReq.disable_axis.z = true;
+		VelConReq.disable_axis.pitch = true;
+		VelConReq.disable_axis.roll = true;
 
 		VelConNode.publish(VelConReq);
 //		ROS_INFO("\n\n\nKraj publishanja zeljene brzine\n\n\n");
@@ -166,10 +182,22 @@ public:
 
 	void reset(const auv_msgs::NavSts& ref, const auv_msgs::NavSts& state) {}
 
-	void formationChange(const std::vector<double>& newFormX, const std::vector<double>& newFormY ) {
+	void formationChange(const formation_control::Formation::ConstPtr& form) {
 
-		FormX = newFormX;
-		FormY = newFormY;
+		for(int i=0; i<VehNum*VehNum; i++) {
+			FormX[i] = form->FormX[i];
+			FormY[i] = form->FormY[i];
+		}
+	}
+
+	void EnableController(const std_msgs::Bool::ConstPtr& enable) {
+
+		if(enable){
+			FCEnable = enable;
+			init();
+		}
+		else
+			FCEnable = enable;
 	}
 
 	inline void saturate(double& num, const double& maxVal, const double& minVal) {
@@ -191,6 +219,7 @@ public:
 
 	void initialize_controller() {
 		ros::NodeHandle nh;
+		navcon_msgs::ConfigureVelocityController req;
 
 		nh.getParam("DGMat", DGMat);
 		nh.getParam("GMat", GMat);
@@ -202,19 +231,33 @@ public:
 		for(int i=0; i<VehNum;i++)
 			FCGotState[i] = false;
 		FCStart = false;
-		FCTempStart = false;
+//		FCTempStart = false;
+
+		//configure velocity controller for x, y axes
+		req.request.desired_mode[0] = 2;
+		req.request.desired_mode[1] = 2;
+		req.request.desired_mode[2] = -1;
+		req.request.desired_mode[3] = -1;
+		req.request.desired_mode[4] = -1;
+		req.request.desired_mode[5] = -1;
+		while(!ConfVelCon.call(req))
+			ROS_INFO("VELOCITY CONTROLLER NOT CONFIGURED\n");
+
 	}
 
 private:
 	ros::Subscriber *StateNode, TempStart;
 	ros::Publisher VelConNode;
+	ros::ServiceClient ConfVelCon;
+	ros::Subscriber ControlEnable;
+	ros::Subscriber FormChange;
 	auv_msgs::NavSts *VehState;
 	auv_msgs::BodyVelocityReq VelConReq;
 
 	bool FCEnable;
 	bool FCStart;
 	bool *FCGotState;
-	bool FCTempStart;
+//	bool FCTempStart;
 	int VehNum;
 	int CurrentVeh;
 	double gamma, Ts;
