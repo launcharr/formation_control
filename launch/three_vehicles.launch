@@ -158,6 +158,7 @@
 	        name="vehicle2uwsim">
 	
 	        <remap from="navsts" to="stateHat"/>	
+	        
 	        <!--<remap from="stateHat" to="stateHatAbs" />-->
 	        <!--<remap from="uwsim_hook" to="uwsim_hook" />-->
 	        <!--<param name="base_frame" value="base_link_abs" />-->
@@ -315,7 +316,4 @@
         	args="--configfile $(find formation_control)/scenes/test_environment_moje.xml
   			--dataPath  $(find labust_uwsim)/urdf/caddy/">				
   	</node>
-  	
-
-	
 </launch>

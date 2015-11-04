@@ -54,9 +54,9 @@
 		<z>0</z>
 		</offsetp>
 		<offsetr>
-		<x>0</x>
+		<x>3.14</x>
 		<y>0</y>
-		<z>0</z>
+		<z>1.57</z>
 		</offsetr>
 		<enablePhysics> 1 </enablePhysics>
 		<showTrajectory>
@@ -287,9 +287,9 @@
 	<z> 0 </z>
 	</position>
 	<orientation>
-	<r>0</r>
+	<r>-3.14</r>
 	<p>0</p>
-	<y>0</y>
+	<y>1.57</y>
 	</orientation>
 	<physics>
 		<mass>0</mass>

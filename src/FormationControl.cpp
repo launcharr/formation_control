@@ -139,21 +139,12 @@ public:
 		VelConReq.twist.linear.x += speedX;
 		VelConReq.twist.linear.y += speedY;
 
-		double tempX = VelConReq.twist.linear.x, tempY = VelConReq.twist.linear.y;
+		// rotate from NED to robot base coordinate system
+		rotateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, YawCurr + Ts*YawRateCurr);
 
-		VelConReq.twist.linear.x = tempX*cos(YawCurr + Ts*YawRateCurr) + tempY*sin(YawCurr + Ts*YawRateCurr);
-//		VelConReq.twist.linear.y = 0;
-		VelConReq.twist.linear.y = -tempX*sin(YawCurr + Ts*YawRateCurr) + tempY*cos(YawCurr + Ts*YawRateCurr);
-
-		if(VelConReq.twist.linear.x > MaxSpeedX)
-			VelConReq.twist.linear.x = MaxSpeedX;
-		else if (VelConReq.twist.linear.x < -MaxSpeedX)
-			VelConReq.twist.linear.x = -MaxSpeedX;
-
-		if(VelConReq.twist.linear.y > MaxSpeedY)
-			VelConReq.twist.linear.y = MaxSpeedY;
-		else if (VelConReq.twist.linear.y < -MaxSpeedY)
-			VelConReq.twist.linear.y = -MaxSpeedY;
+		// saturate requested speeds
+		saturate(VelConReq.twist.linear.x, MaxSpeedX, -MaxSpeedX);
+		saturate(VelConReq.twist.linear.y, MaxSpeedY, -MaxSpeedY);
 
 		nh.param("yaw",yaw,0.);
 		VelConReq.twist.angular.z = yaw;
@@ -175,7 +166,28 @@ public:
 
 	void reset(const auv_msgs::NavSts& ref, const auv_msgs::NavSts& state) {}
 
-	void formationChange() {}
+	void formationChange(const std::vector<double>& newFormX, const std::vector<double>& newFormY ) {
+
+		FormX = newFormX;
+		FormY = newFormY;
+	}
+
+	inline void saturate(double& num, const double& maxVal, const double& minVal) {
+
+		if(num > maxVal)
+			num = maxVal;
+		else if (num < minVal)
+			num = minVal;
+	}
+
+	inline void rotateVector(double& vectX, double& vectY, const double& angle) {
+
+		double tempX = vectX, tempY = vectY;
+
+		vectX = tempX*cos(angle) + tempY*sin(angle);
+		vectY = -tempX*sin(angle) + tempY*cos(angle);
+
+	}
 
 	void initialize_controller() {
 		ros::NodeHandle nh;
