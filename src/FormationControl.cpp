@@ -8,7 +8,6 @@
 #include <auv_msgs/BodyForceReq.h>
 #include <auv_msgs/NavSts.h>
 #include <std_msgs/Bool.h>
-#include <std_msgs/Float64MultiArray.h>
 #include <navcon_msgs/ConfigureVelocityController.h>
 #include <navcon_msgs/EnableControl.h>
 #include <formation_control/Formation.h>
@@ -27,6 +26,7 @@ public:
 
 		ControlEnable = nh.subscribe<std_msgs::Bool>("/FCEnable", 2, &FormControl::EnableController, this);
 
+		FCEnable = false;
 //		nh.param("FCEnable",FCEnable, false);
 		nh.param("VehNum", VehNum, 0);
 //		nh.getParam("VehNum", VehNum);
@@ -192,12 +192,15 @@ public:
 
 	void EnableController(const std_msgs::Bool::ConstPtr& enable) {
 
-		if(enable){
-			FCEnable = enable;
+		if(FCEnable) {
+			FCEnable = enable->data;
+		}
+		else if (enable->data) {
+			FCEnable = enable->data;
 			init();
 		}
-		else
-			FCEnable = enable;
+
+
 	}
 
 	inline void saturate(double& num, const double& maxVal, const double& minVal) {
@@ -231,6 +234,7 @@ public:
 		for(int i=0; i<VehNum;i++)
 			FCGotState[i] = false;
 		FCStart = false;
+
 //		FCTempStart = false;
 
 		//configure velocity controller for x, y axes
