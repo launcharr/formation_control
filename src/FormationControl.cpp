@@ -34,7 +34,7 @@ public:
 			FCGotState = new bool[VehNum];
 			VehState = new auv_msgs::NavSts[VehNum];
 			StateNode = new ros::Subscriber[VehNum];
-//			init();
+			init();
 		}
 	}
 
@@ -204,25 +204,37 @@ public:
 
 	void reset(const auv_msgs::NavSts& ref, const auv_msgs::NavSts& state) {}
 
+	void rotateFormation(std::vector<double>& formx, std::vector<double>& formy, const int num, const double angle) {
+
+		for(int i = 0; i<num*num; i++) {
+			rotateVector(formx[i], formy[i], angle);
+		}
+	}
+
 	void formationChange(const formation_control::Formation::ConstPtr& form) {
 
-		for(int i=0; i<VehNum*VehNum; i++) {
-			FormX[i] = form->FormX[i];
-			FormY[i] = form->FormY[i];
+		if(form->enableParam[0]) {
+			for(int i=0; i<VehNum*VehNum; i++) {
+				FormX[i] = form->FormX[i];
+				FormY[i] = form->FormY[i];
+			}
+		}
+
+		if(form->enableParam[1]) {
+			rotateFormation(FormX, FormY, VehNum, 3.1415/180*form->FormYaw);
 		}
 	}
 
 	void EnableController(const std_msgs::Bool::ConstPtr& enable) {
 
-		if(FCEnable) {
-			FCEnable = enable->data;
-		}
-		else if (enable->data) {
-			FCEnable = enable->data;
-			init();
-		}
-
-
+		FCEnable = enable->data;
+//		if(FCEnable) {
+//			FCEnable = enable->data;
+//		}
+//		else if (enable->data) {
+//			FCEnable = enable->data;
+//			init();
+//		}
 	}
 
 	inline void saturate(double& num, const double& maxVal, const double& minVal) {
