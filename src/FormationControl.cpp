@@ -82,7 +82,7 @@ public:
 		ros::NodeHandle nh;
 //			ROS_INFO("\n\n\nStanje %d. vozila. \nTrenutno vozilo %d: \n\n\n ", i+1, CurrentVeh + 1);
 
-			ROS_INFO("onEstimate i = %d", i);
+//			ROS_INFO("onEstimate i = %d", i);
 			VehState[i].position.east = state->position.east;
 			VehState[i].position.north = state->position.north;
 			VehState[i].body_velocity.x = state->body_velocity.x;
@@ -108,7 +108,9 @@ public:
 
 	void ControlLaw() {
 
-		double XCurr, YCurr, Xi, Yi, VxCurr, VyCurr, Vxi, Vyi, G, FX, FY, YawCurr, YawRateCurr, yaw, speedX, speedY;
+		double XCurr, YCurr, Xi, Yi, VxCurr, VyCurr, Vxi, Vyi;
+		double G, FX, FY, YawCurr, YawRateCurr, yaw, speedX, speedY;
+		double normalX, normalY, rij;
 		int DG;
 		ros::NodeHandle nh;
 		YCurr = VehState[CurrentVeh].position.east;
@@ -117,6 +119,9 @@ public:
 		VyCurr = VehState[CurrentVeh].body_velocity.y;
 		YawCurr = VehState[CurrentVeh].orientation.yaw;
 		YawRateCurr = VehState[CurrentVeh].orientation_rate.yaw;
+		RplFrcX = 0.0; // x
+		RplFrcY = 0.0; // y
+
 
 //		ROS_INFO("XCurr = %f \tYCurr = %f", XCurr, YCurr);
 //		ROS_INFO("Stvarna brzina u X = %f\n",VxCurr);
@@ -139,8 +144,21 @@ public:
 				ROS_INFO("Udaljenost od %d X = %f\n", i,XCurr - Xi);
 				ROS_INFO("Udaljenost od %d Y = %f\n", i,YCurr - Yi);
 
+				// consensus control
 				VelConReq.twist.linear.x = VelConReq.twist.linear.x - DG*G*(XCurr - Xi + FX + gamma*(VxCurr - Vxi));
 				VelConReq.twist.linear.y = VelConReq.twist.linear.y - DG*G*(YCurr - Yi + FY + gamma*(VxCurr - Vxi));
+
+				// repelling force
+				rij = sqrt(pow(XCurr - Xi,2) + pow(YCurr - Yi, 2));
+
+				if(rij < rf && UseRepel) {
+					normalX = (XCurr - Xi)/sqrt(1 + ni*pow(rij,2));
+					normalY = (YCurr - Yi)/sqrt(1 + ni*pow(rij,2));
+					RplFrcX = RplFrcX + (kf/pow(rij,2) + kd)*normalX;
+					RplFrcY = RplFrcY + (kf/pow(rij,2) + kd)*normalY;
+				}
+				ROS_INFO("FORCE X = %f Y = %f\n",RplFrcX,RplFrcY);
+
 			}
 		}
 
@@ -152,6 +170,10 @@ public:
 		VelConReq.twist.linear.y += speedY;
 		VelConReq.twist.angular.z = yaw;
 
+		// add repelling force
+		VelConReq.twist.linear.x += RplFrcX;
+		VelConReq.twist.linear.y += RplFrcY;
+
 		// rotate from NED to robot base coordinate system
 		rotateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, YawCurr + Ts*YawRateCurr);
 
@@ -160,8 +182,8 @@ public:
 		saturate(VelConReq.twist.linear.y, MaxSpeedY, -MaxSpeedY);
 
 
-		ROS_INFO("VelX = %f\n", VelConReq.twist.linear.x);
-		ROS_INFO("VelY = %f\n", VelConReq.twist.linear.y);
+//		ROS_INFO("VelX = %f\n", VelConReq.twist.linear.x);
+//		ROS_INFO("VelY = %f\n", VelConReq.twist.linear.y);
 
 		// disable axis
 		VelConReq.disable_axis.z = true;
@@ -228,6 +250,11 @@ public:
 		nh.getParam("GMat", GMat);
 		nh.getParam("FormX", FormX);
 		nh.getParam("FormY", FormY);
+		nh.getParam("kf",kf);
+		nh.getParam("kd",kd);
+		nh.param("UseRepel",UseRepel, false);
+		nh.param("ni",ni, 1.0);
+		nh.param("rf",rf, 2.0);
 		nh.param("gamma",gamma, 0.1);
 		nh.param("Ts",Ts, 0.7);
 //		nh.param("nu_manual/maximum_speeds",MaxSpeed, {0.05,0.05,0.05,0,0,0.5});
@@ -257,14 +284,16 @@ private:
 	ros::Subscriber FormChange;
 	auv_msgs::NavSts *VehState;
 	auv_msgs::BodyVelocityReq VelConReq;
+	double RplFrcX, RplFrcY;
 
 	bool FCEnable;
 	bool FCStart;
+	bool UseRepel;
 	bool *FCGotState;
 //	bool FCTempStart;
 	int VehNum;
 	int CurrentVeh;
-	double gamma, Ts;
+	double gamma, Ts, kf, ni, kd, rf;
 	std::vector<std::string> ParentNS;
 	std::vector<int> DGMat; // direct graph matrix
 	std::vector<double> GMat; // gain matrix
