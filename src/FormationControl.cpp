@@ -83,26 +83,29 @@ public:
 //			ROS_INFO("\n\n\nStanje %d. vozila. \nTrenutno vozilo %d: \n\n\n ", i+1, CurrentVeh + 1);
 
 //			ROS_INFO("onEstimate i = %d", i);
-			VehState[i].position.east = state->position.east;
-			VehState[i].position.north = state->position.north;
-			VehState[i].body_velocity.x = state->body_velocity.x;
-			VehState[i].body_velocity.y = state->body_velocity.y;
-			VehState[i].orientation.yaw = state->orientation.yaw;
-			VehState[i].orientation_rate.yaw = state->orientation_rate.yaw;
-			FCGotState[i] = true;
-			FCStart = true;
 
-//			ROS_INFO("NVeh = %d\n",NVeh);
-			for(int j=0; j<VehNum; j++) {
-				FCStart = FCStart && FCGotState[j];
-//				ROS_INFO("FCGotState[%d] = %d\n",j, FCGotState[j]);
-			}
+		// extract necessary info
+		VehState[i].position.east = state->position.east;
+		VehState[i].position.north = state->position.north;
+		VehState[i].body_velocity.x = state->body_velocity.x;
+		VehState[i].body_velocity.y = state->body_velocity.y;
+		VehState[i].orientation.yaw = state->orientation.yaw;
+		VehState[i].orientation_rate.yaw = state->orientation_rate.yaw;
+		FCGotState[i] = true;
+
+//		// enable control when you get states
+//		FCStart = true;
+////			ROS_INFO("NVeh = %d\n",NVeh);
+//		for(int j=0; j<VehNum; j++) {
+//			FCStart = FCStart && FCGotState[j];
+////				ROS_INFO("FCGotState[%d] = %d\n",j, FCGotState[j]);
+//		}
 //			nh.getParam("/FCTempStart", FCTempStart);
 
-			if(FCStart && FCEnable) {
-				ROS_INFO("ControlLaw\n");
-				ControlLaw();
-			}
+		if(FCGotState[CurrentVeh] && FCEnable) {
+			ROS_INFO("ControlLaw\n");
+			ControlLaw();
+		}
 //			ROS_INFO("\n\n\nIzlaz iz onEstimate\n\n\n");
 	}
 
@@ -131,7 +134,7 @@ public:
 		VelConReq.twist.linear.y = 0;
 
 		for(int i=0; i<VehNum; i++){
-			if(i!=CurrentVeh){
+			if(i!=CurrentVeh && FCGotState[i]){
 				Yi = VehState[i].position.east;
 				Xi = VehState[i].position.north;
 				DG = DGMat[CurrentVeh*VehNum + i];
@@ -170,12 +173,16 @@ public:
 		VelConReq.twist.linear.y += speedY;
 		VelConReq.twist.angular.z = yaw;
 
+		// saturate before adding force and after
+		saturate(VelConReq.twist.linear.x, MaxSpeedX, -MaxSpeedX);
+		saturate(VelConReq.twist.linear.y, MaxSpeedY, -MaxSpeedY);
+
 		// add repelling force
 		VelConReq.twist.linear.x += RplFrcX;
 		VelConReq.twist.linear.y += RplFrcY;
 
 		// rotate from NED to robot base coordinate system
-		rotateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, YawCurr + Ts*YawRateCurr);
+		rotateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, -YawCurr - Ts*YawRateCurr);
 
 		// saturate requested speeds
 		saturate(VelConReq.twist.linear.x, MaxSpeedX, -MaxSpeedX);
@@ -186,10 +193,11 @@ public:
 //		ROS_INFO("VelY = %f\n", VelConReq.twist.linear.y);
 
 		// disable axis
-		VelConReq.disable_axis.z = true;
-		VelConReq.disable_axis.pitch = true;
-		VelConReq.disable_axis.roll = true;
+//		VelConReq.disable_axis.z = true;
+//		VelConReq.disable_axis.pitch = true;
+//		VelConReq.disable_axis.roll = true;
 
+		// publish requested velocity
 		VelConNode.publish(VelConReq);
 //		ROS_INFO("\n\n\nKraj publishanja zeljene brzine\n\n\n");
 
@@ -249,8 +257,8 @@ public:
 
 		double tempX = vectX, tempY = vectY;
 
-		vectX = tempX*cos(angle) + tempY*sin(angle);
-		vectY = -tempX*sin(angle) + tempY*cos(angle);
+		vectX = tempX*cos(angle) - tempY*sin(angle);
+		vectY = tempX*sin(angle) + tempY*cos(angle);
 
 	}
 
@@ -282,7 +290,7 @@ public:
 		req.request.desired_mode[2] = -1;
 		req.request.desired_mode[3] = -1;
 		req.request.desired_mode[4] = -1;
-		req.request.desired_mode[5] = -1;
+		req.request.desired_mode[5] = 2;
 		while(!ConfVelCon.call(req))
 			ROS_INFO("VELOCITY CONTROLLER NOT CONFIGURED\n");
 
