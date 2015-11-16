@@ -282,7 +282,19 @@
 	  		  name="formationControl1"
 	  		  type="FormationControl">
 		</node>
- 		
+		
+		<node pkg="labust_control"
+			  name="FormPosController"
+ 			  type="fadp_controller2">
+			
+			<remap from="Enable" to="FormPos_enable" />
+			<remap from="windup" to="tauAch"/>			
+			<remap from="ref" to="PosRef"/>
+			<remap from="out" to="FormVel"/>
+			<remap from="state" to="stateHat"/>		 
+				 	
+		</node>
+		
  	</group>
  	<group ns="vehicle2">
  		
@@ -296,6 +308,18 @@
 	  		  output="screen">
 		</node>
  		
+		<node pkg="labust_control"
+			  name="FormPosController"
+ 			  type="fadp_controller2">
+			
+ 			<remap from="Enable" to="FormPos_enable" />
+			<remap from="windup" to="tauAch"/> 			
+			<remap from="ref" to="PosRef"/>
+			<remap from="out" to="FormVel"/>
+			<remap from="state" to="stateHat"/>		 
+				 	
+		</node>
+		
  	</group>
  	<group ns="vehicle3">
  		
@@ -308,6 +332,19 @@
 	  		  type="FormationControl"
 	  		  >
 		</node>	
+		
+		<node pkg="labust_control"
+			  name="FormPosController"
+ 			  type="fadp_controller2">
+			
+ 			<remap from="Enable" to="FormPos_enable" />
+			<remap from="windup" to="tauAch"/> 			
+			<remap from="ref" to="PosRef"/>
+			<remap from="out" to="FormVel"/>
+			<remap from="state" to="stateHat"/>		 
+				 	
+		</node>
+		
  	</group>
 
 	<node   pkg="uwsim" 

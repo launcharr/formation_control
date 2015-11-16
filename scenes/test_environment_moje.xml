@@ -54,16 +54,16 @@
 		<z>0</z>
 		</offsetp>
 		<offsetr>
-		<x>3.14</x>
+		<x>3.14159265</x>
 		<y>0</y>
-		<z>1.57</z>
+		<z>1.57079633</z>
 		</offsetr>
 		<enablePhysics> 1 </enablePhysics>
 		<showTrajectory>
-			<target>pladypos/base_link</target>
-			<!--<color>white</color>-->
+			<target>pladypos2/base_link</target>
 		</showTrajectory>
 	</simParams>
+
 	
 	<camera>
 		<freeMotion> 1 </freeMotion>
@@ -83,7 +83,8 @@
 			<z>0</z>
 		</lookAt>
 	</camera>
-	
+
+
 	<vehicle>
 		<name>pladypos</name>
 		<file>data/scenes/pladypos.urdf</file>
@@ -287,9 +288,9 @@
 	<z> 0 </z>
 	</position>
 	<orientation>
-	<r>-3.14</r>
+	<r>-3.14159265</r>
 	<p>0</p>
-	<y>1.57</y>
+	<y>1.57079633</y>
 	</orientation>
 	<physics>
 		<mass>0</mass>
