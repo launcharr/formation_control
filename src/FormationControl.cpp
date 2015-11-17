@@ -76,7 +76,7 @@ public:
 		ConfVelCon = nhPub.serviceClient<navcon_msgs::ConfigureVelocityController>(ParentNS[CurrentVeh]+"/ConfigureVelocityController");
 
 		//enable dynamic positioning service
-		EnableDP = nhPub.serviceClient<navcon_msgs::EnableControl>(ParentNS[CurrentVeh]+"/FormPos_Enable");
+		EnableDP = nhSub.serviceClient<navcon_msgs::EnableControl>(ParentNS[CurrentVeh]+"/FormPos_Enable");
 
 		//formation change topic
 		FormChange = nh.subscribe<formation_control::Formation>("/FormChange", 1, &FormControl::formationChange, this);
@@ -233,7 +233,7 @@ public:
 
 	void onControllerRef(const auv_msgs::BodyVelocityReq::ConstPtr& ref) {
 
-		ROS_INFO(" DP velocity = %f, %f\n",ref->twist.linear.x,ref->twist.linear.x);
+//		ROS_INFO(" DP velocity = %f, %f\n",ref->twist.linear.x,ref->twist.linear.x);
 		FormVelX = ref->twist.linear.x;
 		FormVelY = ref->twist.linear.y;
 	}
@@ -249,9 +249,18 @@ public:
 		ControllerRef.position.north = ref->position.north;
 
 		addFormCentre(ControllerRef.position.north, ControllerRef.position.east);
-		ROS_INFO(" Position = %f, %f\n",ControllerRef.position.north,ControllerRef.position.east);
+//		ROS_INFO(" Position = %f, %f\n",ControllerRef.position.north,ControllerRef.position.east);
 
 		VehPosRef.publish(ControllerRef);
+
+	}
+
+	inline void rotateVector(double& vectX, double& vectY, const double& angle) {
+
+		double tempX = vectX, tempY = vectY;
+
+		vectX = tempX*cos(angle) - tempY*sin(angle);
+		vectY = tempX*sin(angle) + tempY*cos(angle);
 
 	}
 
@@ -310,15 +319,6 @@ public:
 			num = minVal;
 	}
 
-	inline void rotateVector(double& vectX, double& vectY, const double& angle) {
-
-		double tempX = vectX, tempY = vectY;
-
-		vectX = tempX*cos(angle) - tempY*sin(angle);
-		vectY = tempX*sin(angle) + tempY*cos(angle);
-
-	}
-
 	void initialize_controller() {
 		ros::NodeHandle nh;
 		navcon_msgs::ConfigureVelocityController req;
@@ -358,7 +358,9 @@ public:
 			ROS_INFO("VELOCITY CONTROLLER NOT CONFIGURED\n");
 
 		en.request.enable = true;
-		EnableDP.call(en);
+		while(!EnableDP.call(en))
+			ROS_INFO("DYNAMIC POSITIONING NOT STARTED");
+
 
 
 	}
