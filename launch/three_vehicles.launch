@@ -62,7 +62,7 @@
 			
 			
 		</include>
-		<rosparam  param="eta0"> [5,5,0,0,0,0.] </rosparam>
+		<rosparam  param="eta0"> [5,5,0,0,0,0.0] </rosparam>
 		
 		<node
 	        pkg="labust_sim" 

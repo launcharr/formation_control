@@ -183,23 +183,17 @@ public:
 			}
 		}
 
-		// "manual" control for testing
-		nh.param("speedX",speedX, 0.);
-		nh.param("speedY",speedY, 0.);
-		nh.param("yaw",yaw,0.);
+		// saturate before adding force
+		saturateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, MaxSpeedX);
 
-		VelConReq.twist.angular.z = yaw;
-
-		// saturate before adding force and after
-		saturate(VelConReq.twist.linear.x, MaxSpeedX, -MaxSpeedX);
-		saturate(VelConReq.twist.linear.y, MaxSpeedY, -MaxSpeedY);
-
-		// add repelling force
+		// add repelling force and saturate
 		VelConReq.twist.linear.x += RplFrcX;
 		VelConReq.twist.linear.y += RplFrcY;
+//		saturateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, MaxSpeedX);
 
 		// rotate from NED to robot base coordinate system
 		rotateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, -YawCurr - Ts*YawRateCurr);
+
 
 		// add dynamic position
 		if(!UseExtCon && DPStart) {
@@ -207,26 +201,23 @@ public:
 			FormVelX = -kdp*(XCurr - FormPosX);
 			FormVelY = -kdp*(YCurr - FormPosY);
 
-			rotateVector(FormVelX, FormVelY, -YawCurr - Ts*YawRateCurr);
+			rotateVector(FormVelX, FormVelY, - YawCurr - Ts*YawRateCurr);
 		}
 
-		saturate(FormVelX, MaxSpeedX, -MaxSpeedX);
-		saturate(FormVelY, MaxSpeedX, -MaxSpeedX);
+		saturateVector(FormVelX, FormVelY, MaxSpeedX);
 		VelConReq.twist.linear.x += FormVelX;
 		VelConReq.twist.linear.y += FormVelY;
 
 		// saturate requested speeds
-		saturate(VelConReq.twist.linear.x, MaxSpeedX, -MaxSpeedX);
-		saturate(VelConReq.twist.linear.y, MaxSpeedY, -MaxSpeedY);
-
+		saturateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, MaxSpeedX);
 
 		ROS_INFO("Vel = %f, %f\n", VelConReq.twist.linear.x, VelConReq.twist.linear.y);
-
 
 		// disable axis
 		VelConReq.disable_axis.z = true;
 		VelConReq.disable_axis.pitch = true;
 		VelConReq.disable_axis.roll = true;
+		VelConReq.disable_axis.yaw = true;
 
 		// publish requested velocity
 		VelConNode.publish(VelConReq);
@@ -378,6 +369,17 @@ public:
 			num = minVal;
 	}
 
+	inline void saturateVector(double& numX, double& numY, const double& dist) {
+
+		double tempX = numX, tempY = numY;
+
+		if(sqrt(pow(tempX,2) + pow(tempY,2)) > dist) {
+			numX = tempX*dist/sqrt(pow(tempX,2) + pow(tempY,2));
+			numY = tempY*dist/sqrt(pow(tempX,2) + pow(tempY,2));
+		}
+
+	}
+
 	void initialize_controller() {
 		ros::NodeHandle nh;
 		navcon_msgs::ConfigureVelocityController req;
@@ -425,7 +427,7 @@ public:
 		req.request.desired_mode[2] = -1;
 		req.request.desired_mode[3] = -1;
 		req.request.desired_mode[4] = -1;
-		req.request.desired_mode[5] = 2;
+		req.request.desired_mode[5] = -1;
 		while(!ConfVelCon.call(req))
 			ROS_INFO("VELOCITY CONTROLLER NOT CONFIGURED\n");
 
