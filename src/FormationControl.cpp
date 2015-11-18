@@ -70,7 +70,7 @@ public:
 		VelRef = nh.subscribe<auv_msgs::BodyVelocityReq>(ParentNS[CurrentVeh]+"/FormVel", 1, &FormControl::onControllerRef, this);
 
 		//subscribe to formation position reference
-		FormPosRef = nh.subscribe<auv_msgs::NavSts>("/FormPosRef", 1, &FormControl::onRef, this);
+		FormPosRef = nh.subscribe<auv_msgs::NavSts>("/FormPosRef", 1, &FormControl::onPosRef, this);
 
 		//configure velocity controller service
 		ConfVelCon = nhPub.serviceClient<navcon_msgs::ConfigureVelocityController>(ParentNS[CurrentVeh]+"/ConfigureVelocityController");
@@ -202,6 +202,14 @@ public:
 		rotateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, -YawCurr - Ts*YawRateCurr);
 
 		// add dynamic position
+		if(!UseExtCon && DPStart) {
+			// internal DP controller
+			FormVelX = -kdp*(XCurr - FormPosX);
+			FormVelY = -kdp*(YCurr - FormPosY);
+
+			rotateVector(FormVelX, FormVelY, -YawCurr - Ts*YawRateCurr);
+		}
+
 		saturate(FormVelX, MaxSpeedX, -MaxSpeedX);
 		saturate(FormVelY, MaxSpeedX, -MaxSpeedX);
 		VelConReq.twist.linear.x += FormVelX;
@@ -212,8 +220,8 @@ public:
 		saturate(VelConReq.twist.linear.y, MaxSpeedY, -MaxSpeedY);
 
 
-//		ROS_INFO("VelX = %f\n", VelConReq.twist.linear.x);
-//		ROS_INFO("VelY = %f\n", VelConReq.twist.linear.y);
+		ROS_INFO("Vel = %f, %f\n", VelConReq.twist.linear.x, VelConReq.twist.linear.y);
+
 
 		// disable axis
 		VelConReq.disable_axis.z = true;
@@ -234,24 +242,38 @@ public:
 	void onControllerRef(const auv_msgs::BodyVelocityReq::ConstPtr& ref) {
 
 //		ROS_INFO(" DP velocity = %f, %f\n",ref->twist.linear.x,ref->twist.linear.x);
-		FormVelX = ref->twist.linear.x;
-		FormVelY = ref->twist.linear.y;
+		if(UseExtCon) {
+			// external DP controller
+			FormVelX = ref->twist.linear.x;
+			FormVelY = ref->twist.linear.y;
+		}
 	}
 
-	void onRef(const auv_msgs::NavSts::ConstPtr& ref) {
+	void onPosRef(const auv_msgs::NavSts::ConstPtr& ref) {
 
-		auv_msgs::NavSts ControllerRef;
-
+		// formation center position reference
 		PosRef = *ref;
 
-//		ROS_INFO(" Position = %f, %f\n",ref->position.north,ref->position.east);
-		ControllerRef.position.east = ref->position.east;
-		ControllerRef.position.north = ref->position.north;
+		if(UseExtCon) {
 
-		addFormCentre(ControllerRef.position.north, ControllerRef.position.east);
-//		ROS_INFO(" Position = %f, %f\n",ControllerRef.position.north,ControllerRef.position.east);
+			auv_msgs::NavSts ControllerRef;
 
-		VehPosRef.publish(ControllerRef);
+//			ROS_INFO(" Position = %f, %f\n",ref->position.north,ref->position.east);
+			ControllerRef.position.east = ref->position.east;
+			ControllerRef.position.north = ref->position.north;
+
+			addFormCentre(ControllerRef.position.north, ControllerRef.position.east);
+//			ROS_INFO(" Position = %f, %f\n",ControllerRef.position.north,ControllerRef.position.east);
+
+			VehPosRef.publish(ControllerRef);
+		}
+		else {
+			FormPosX = PosRef.position.north;
+			FormPosY = PosRef.position.east;
+
+			addFormCentre(FormPosX, FormPosY);
+			DPStart = true;
+		}
 
 	}
 
@@ -286,20 +308,57 @@ public:
 
 		if(form->enableParam[0] || form->enableParam[1]) {
 
-			auv_msgs::NavSts ControllerRef;
+			if(UseExtCon) {
+				auv_msgs::NavSts ControllerRef;
 
-			ControllerRef.position.east = PosRef.position.east;
-			ControllerRef.position.north = PosRef.position.north;
+				ControllerRef.position.east = PosRef.position.east;
+				ControllerRef.position.north = PosRef.position.north;
 
-			addFormCentre(ControllerRef.position.north, ControllerRef.position.east);
+				addFormCentre(ControllerRef.position.north, ControllerRef.position.east);
 
-			VehPosRef.publish(ControllerRef);
+				VehPosRef.publish(ControllerRef);
+			}
+			else {
+				FormPosX = PosRef.position.north;
+				FormPosY = PosRef.position.east;
+
+				addFormCentre(FormPosX, FormPosY);
+			}
 		}
 
 	}
 
 	void EnableController(const std_msgs::Bool::ConstPtr& enable) {
 		FCEnable = enable->data;
+
+		if (UseImedStart) {
+			// start velocity controller when you enable control
+
+			if (UseExtCon) {
+				// use external velocity controller
+				auv_msgs::NavSts ControllerRef;
+
+				ControllerRef.position.east = PosRef.position.east;
+				ControllerRef.position.north = PosRef.position.north;
+
+				addFormCentre(ControllerRef.position.north, ControllerRef.position.east);
+
+		//		ROS_INFO("RefPos = %f, %f",ControllerRef.position.north, ControllerRef.position.east);
+
+				VehPosRef.publish(ControllerRef);
+			}
+			else {
+
+				FormPosX = PosRef.position.north;
+				FormPosY = PosRef.position.east;
+
+				addFormCentre(FormPosX, FormPosY);
+				DPStart = true;
+
+
+			}
+		}
+
 	}
 
 	inline void addFormCentre(double& refX, double& refY) {
@@ -328,22 +387,35 @@ public:
 		nh.getParam("GMat", GMat);
 		nh.getParam("FormX", FormX);
 		nh.getParam("FormY", FormY);
-		nh.getParam("kf",kf);
-		nh.getParam("kd",kd);
-		nh.param("MaxSpeedX",MaxSpeedX, 1.0);
-		nh.param("MaxSpeedY",MaxSpeedY, 1.0);
-		nh.param("UseRepel",UseRepel, false);
-		nh.param("ni",ni, 1.0);
-		nh.param("rf",rf, 2.0);
 		nh.param("gamma",gamma, 0.1);
 		nh.param("Ts",Ts, 0.7);
+
+		nh.param("UseExtCon",UseExtCon, false);
+		if(!UseExtCon){
+			nh.getParam("kdp",kdp);
+		}
+		nh.param("UseImedStart",UseImedStart, false);
+		nh.param("MaxSpeedX",MaxSpeedX, 1.0);
+		nh.param("MaxSpeedY",MaxSpeedY, 1.0);
+
+		nh.param("UseRepel",UseRepel, false);
+		if(UseRepel){
+			nh.getParam("kf",kf);
+			nh.getParam("kd",kd);
+			nh.param("ni",ni, 1.0);
+			nh.param("rf",rf, 2.0);
+		}
+
 //		nh.param("nu_manual/maximum_speeds",MaxSpeed, {0.05,0.05,0.05,0,0,0.5});
 		for(int i=0; i<VehNum;i++)
 			FCGotState[i] = false;
 		FCStart = false;
+		DPStart = false;
 
 		FormVelX = 0;
 		FormVelY = 0;
+		FormPosX = 0;
+		FormPosY = 0;
 
 //		FCTempStart = false;
 
@@ -380,16 +452,19 @@ private:
 	auv_msgs::NavSts PosRef;
 
 	double RplFrcX, RplFrcY;
-	double FormVelX, FormVelY;
+	double FormVelX, FormVelY, FormPosX, FormPosY;
 
 	bool FCEnable;
 	bool FCStart;
 	bool UseRepel;
+	bool UseExtCon;
+	bool UseImedStart;
 	bool *FCGotState;
+	bool DPStart;
 //	bool FCTempStart;
 	int VehNum;
 	int CurrentVeh;
-	double gamma, Ts, kf, ni, kd, rf, MaxSpeedX, MaxSpeedY;
+	double gamma, Ts, kf, ni, kd, rf, kdp, MaxSpeedX, MaxSpeedY;
 	std::vector<std::string> ParentNS;
 	std::vector<int> DGMat; // direct graph matrix
 	std::vector<double> GMat; // gain matrix

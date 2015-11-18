@@ -13,6 +13,10 @@ Ts: 0.7
 MaxSpeedX: 1.0
 MaxSpeedY: 1.0
 
+# use external DP controller
+UseExtCon: False
+UseImedStart: False
+kdp: 0.5
 
 UseRepel: True
 # Force repeling controller gain
