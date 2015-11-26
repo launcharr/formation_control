@@ -26,9 +26,8 @@ public:
 		ControlEnable = nh.subscribe<std_msgs::Bool>("/FCEnable", 2, &FormControl::EnableController, this);
 
 		FCEnable = false;
-//		nh.param("FCEnable",FCEnable, false);
 		nh.param("VehNum", VehNum, 0);
-//		nh.getParam("VehNum", VehNum);
+
 		if(VehNum > 0) {
 			FCGotState = new bool[VehNum];
 			VehState = new auv_msgs::NavSts[VehNum];
@@ -52,7 +51,7 @@ public:
 		nh.getParam("CurrentVeh", CurrentVeh);
 
 
-		// subscribe to all vehicle states
+		/* subscribe to all vehicle states */
 		for(int i=0; i<VehNum; i++){
 //				ROS_INFO("i = %d\n", i);
 			StateNode[i] = nhSub.subscribe<auv_msgs::NavSts>(ParentNS[i]+"/stateHat",2,boost::bind(&FormControl::onEstimate, this, _1, i));
@@ -60,25 +59,25 @@ public:
 //			ROS_INFO("SubscriberNS = %s\n", (ParentNS[i]+"/stateHat").c_str());
 		}
 
-		// pusblish velocity request
+		/* pusblish velocity request */
 		VelConNode = nhPub.advertise<auv_msgs::BodyVelocityReq>(ParentNS[CurrentVeh]+"/nuRef", 1);
 
-		// publish desired position to DP
+		/* publish desired position to DP */
 		VehPosRef = nhPub.advertise<auv_msgs::NavSts>(ParentNS[CurrentVeh]+"/PosRef", 1);
 
-		// subscribe to DP velocity
+		/* subscribe to DP velocity */
 		VelRef = nh.subscribe<auv_msgs::BodyVelocityReq>(ParentNS[CurrentVeh]+"/FormVel", 1, &FormControl::onControllerRef, this);
 
-		//subscribe to formation position reference
+		/* subscribe to formation position reference */
 		FormPosRef = nh.subscribe<auv_msgs::NavSts>("/FormPosRef", 1, &FormControl::onPosRef, this);
 
-		//configure velocity controller service
+		/* configure velocity controller service */
 		ConfVelCon = nhPub.serviceClient<navcon_msgs::ConfigureVelocityController>(ParentNS[CurrentVeh]+"/ConfigureVelocityController");
 
-		//enable dynamic positioning service
+		/* enable dynamic positioning service */
 		EnableDP = nhSub.serviceClient<navcon_msgs::EnableControl>(ParentNS[CurrentVeh]+"/FormPos_Enable");
 
-		//formation change topic
+		/* formation change topic */
 		FormChange = nh.subscribe<formation_control::Formation>("/FormChange", 1, &FormControl::formationChange, this);
 
 
@@ -91,33 +90,14 @@ public:
 	void onEstimate(const auv_msgs::NavSts::ConstPtr& state, const int& i) {
 
 		ros::NodeHandle nh;
-//			ROS_INFO("\n\n\nStanje %d. vozila. \nTrenutno vozilo %d: \n\n\n ", i+1, CurrentVeh + 1);
 
-//			ROS_INFO("onEstimate i = %d", i);
-
-		// extract necessary info
-		VehState[i].position.east = state->position.east;
-		VehState[i].position.north = state->position.north;
-		VehState[i].body_velocity.x = state->body_velocity.x;
-		VehState[i].body_velocity.y = state->body_velocity.y;
-		VehState[i].orientation.yaw = state->orientation.yaw;
-		VehState[i].orientation_rate.yaw = state->orientation_rate.yaw;
+		/* extract necessary info */
+		VehState[i] = *state;
 		FCGotState[i] = true;
 
-//		// enable control when you get states
-//		FCStart = true;
-////			ROS_INFO("NVeh = %d\n",NVeh);
-//		for(int j=0; j<VehNum; j++) {
-//			FCStart = FCStart && FCGotState[j];
-////				ROS_INFO("FCGotState[%d] = %d\n",j, FCGotState[j]);
-//		}
-//			nh.getParam("/FCTempStart", FCTempStart);
-
 		if(FCGotState[CurrentVeh] && FCEnable) {
-//			ROS_INFO("ControlLaw\n");
 			ControlLaw();
 		}
-//			ROS_INFO("\n\n\nIzlaz iz onEstimate\n\n\n");
 	}
 
 	void ControlLaw() {
@@ -133,13 +113,9 @@ public:
 		VyCurr = VehState[CurrentVeh].body_velocity.y;
 		YawCurr = VehState[CurrentVeh].orientation.yaw;
 		YawRateCurr = VehState[CurrentVeh].orientation_rate.yaw;
+
 		RplFrcX = 0.0; // x
 		RplFrcY = 0.0; // y
-
-
-//		ROS_INFO("XCurr = %f \tYCurr = %f", XCurr, YCurr);
-//		ROS_INFO("Stvarna brzina u X = %f\n",VxCurr);
-//		ROS_INFO("Stvarna brzina u Y = %f\n",VyCurr);
 
 		VelConReq.twist.linear.x = 0;
 		VelConReq.twist.linear.y = 0;
@@ -158,11 +134,11 @@ public:
 //				ROS_INFO("Udaljenost od %d X = %f\n", i,XCurr - Xi);
 //				ROS_INFO("Udaljenost od %d Y = %f\n", i,YCurr - Yi);
 
-				// consensus control
-				VelConReq.twist.linear.x = VelConReq.twist.linear.x - DG*G*(XCurr - Xi + FX + gamma*(VxCurr - Vxi));
-				VelConReq.twist.linear.y = VelConReq.twist.linear.y - DG*G*(YCurr - Yi + FY + gamma*(VxCurr - Vxi));
+				/* consensus control*/
+				VelConReq.twist.linear.x = VelConReq.twist.linear.x - DG*G*(XCurr - Xi + FX);
+				VelConReq.twist.linear.y = VelConReq.twist.linear.y - DG*G*(YCurr - Yi + FY);
 
-				// repelling force
+				/* repelling force */
 				rij = sqrt(pow(XCurr - Xi,2) + pow(YCurr - Yi, 2));
 
 				if(rij < rf && UseRepel) {
@@ -183,19 +159,19 @@ public:
 			}
 		}
 
-		// saturate before adding force
-		saturateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, MaxSpeedX);
+		/* saturate before adding force*/
+		saturateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, MaxSpeed);
 
 		// add repelling force and saturate
 		VelConReq.twist.linear.x += RplFrcX;
 		VelConReq.twist.linear.y += RplFrcY;
 //		saturateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, MaxSpeedX);
 
-		// rotate from NED to robot base coordinate system
+		/* rotate from NED to robot base coordinate system */
 		rotateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, -YawCurr - Ts*YawRateCurr);
 
 
-		// add dynamic position
+		/* add dynamic position */
 		if(!UseExtCon && DPStart) {
 			// internal DP controller
 			FormVelX = -kdp*(XCurr - FormPosX);
@@ -204,22 +180,22 @@ public:
 			rotateVector(FormVelX, FormVelY, - YawCurr - Ts*YawRateCurr);
 		}
 
-		saturateVector(FormVelX, FormVelY, MaxSpeedX);
+		saturateVector(FormVelX, FormVelY, MaxSpeed);
 		VelConReq.twist.linear.x += FormVelX;
 		VelConReq.twist.linear.y += FormVelY;
 
-		// saturate requested speeds
-		saturateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, MaxSpeedX);
+		/* saturate requested speeds */
+		saturateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, MaxSpeed);
 
 		ROS_INFO("Vel = %f, %f\n", VelConReq.twist.linear.x, VelConReq.twist.linear.y);
 
-		// disable axis
+		/* disable axis*/
 		VelConReq.disable_axis.z = true;
 		VelConReq.disable_axis.pitch = true;
 		VelConReq.disable_axis.roll = true;
 		VelConReq.disable_axis.yaw = true;
 
-		// publish requested velocity
+		/* publish requested velocity */
 		VelConNode.publish(VelConReq);
 //		ROS_INFO("\n\n\nKraj publishanja zeljene brzine\n\n\n");
 
@@ -234,7 +210,7 @@ public:
 
 //		ROS_INFO(" DP velocity = %f, %f\n",ref->twist.linear.x,ref->twist.linear.x);
 		if(UseExtCon) {
-			// external DP controller
+			/* external DP controller*/
 			FormVelX = ref->twist.linear.x;
 			FormVelY = ref->twist.linear.y;
 		}
@@ -242,16 +218,14 @@ public:
 
 	void onPosRef(const auv_msgs::NavSts::ConstPtr& ref) {
 
-		// formation center position reference
+		/* formation center position reference*/
 		PosRef = *ref;
 
 		if(UseExtCon) {
 
-			auv_msgs::NavSts ControllerRef;
+			auv_msgs::NavSts ControllerRef = PosRef;
 
 //			ROS_INFO(" Position = %f, %f\n",ref->position.north,ref->position.east);
-			ControllerRef.position.east = ref->position.east;
-			ControllerRef.position.north = ref->position.north;
 
 			addFormCentre(ControllerRef.position.north, ControllerRef.position.east);
 //			ROS_INFO(" Position = %f, %f\n",ControllerRef.position.north,ControllerRef.position.east);
@@ -287,6 +261,7 @@ public:
 	void formationChange(const formation_control::Formation::ConstPtr& form) {
 
 		if(form->enableParam[0]) {
+			/*change formation*/
 			for(int i=0; i<VehNum*VehNum; i++) {
 				FormX[i] = form->FormX[i];
 				FormY[i] = form->FormY[i];
@@ -294,16 +269,14 @@ public:
 		}
 
 		if(form->enableParam[1]) {
+			/*only rotate formation*/
 			rotateFormation(FormX, FormY, VehNum, 3.1415/180*form->FormYaw);
 		}
 
 		if(form->enableParam[0] || form->enableParam[1]) {
-
+			/*Change position reference*/
 			if(UseExtCon) {
-				auv_msgs::NavSts ControllerRef;
-
-				ControllerRef.position.east = PosRef.position.east;
-				ControllerRef.position.north = PosRef.position.north;
+				auv_msgs::NavSts ControllerRef = PosRef;
 
 				addFormCentre(ControllerRef.position.north, ControllerRef.position.east);
 
@@ -323,14 +296,11 @@ public:
 		FCEnable = enable->data;
 
 		if (UseImedStart) {
-			// start velocity controller when you enable control
+			/* start velocity controller when you enable control*/
 
 			if (UseExtCon) {
-				// use external velocity controller
-				auv_msgs::NavSts ControllerRef;
-
-				ControllerRef.position.east = PosRef.position.east;
-				ControllerRef.position.north = PosRef.position.north;
+				/* use external velocity controller*/
+				auv_msgs::NavSts ControllerRef = PosRef;
 
 				addFormCentre(ControllerRef.position.north, ControllerRef.position.east);
 
@@ -397,8 +367,7 @@ public:
 			nh.getParam("kdp",kdp);
 		}
 		nh.param("UseImedStart",UseImedStart, false);
-		nh.param("MaxSpeedX",MaxSpeedX, 1.0);
-		nh.param("MaxSpeedY",MaxSpeedY, 1.0);
+		nh.param("MaxSpeed",MaxSpeed, 1.0);
 
 		nh.param("UseRepel",UseRepel, false);
 		if(UseRepel){
@@ -421,7 +390,7 @@ public:
 
 //		FCTempStart = false;
 
-		//configure velocity controller for x, y axes
+		/* configure velocity controller for x, y axes */
 		req.request.desired_mode[0] = 2;
 		req.request.desired_mode[1] = 2;
 		req.request.desired_mode[2] = -1;
@@ -466,12 +435,11 @@ private:
 //	bool FCTempStart;
 	int VehNum;
 	int CurrentVeh;
-	double gamma, Ts, kf, ni, kd, rf, kdp, MaxSpeedX, MaxSpeedY;
+	double gamma, Ts, kf, ni, kd, rf, kdp, MaxSpeed;
 	std::vector<std::string> ParentNS;
 	std::vector<int> DGMat; // direct graph matrix
 	std::vector<double> GMat; // gain matrix
 	std::vector<double> FormX, FormY; // formation distances matrix
-	std::vector<double> MaxSpeed;
 };
 
 int main(int argc, char **argv)  {
