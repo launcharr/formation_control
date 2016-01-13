@@ -8,7 +8,10 @@
 
 <launch>
 
-	<group ns="vehicle1">		
+	<group ns="vehicle1">
+		
+		<remap from="/tf" to="/vehicle1/tf" />
+ 		<remap from="/tf_static" to="/vehicle1/tf_static" />		
 		
 		<!-- Location parameters -->
 		<rosparam command="load" file="$(find snippets)/data/locations/$(env LOCATION).yaml" />
@@ -96,6 +99,9 @@
 
  	<group ns="vehicle2">		
 		
+ 		<remap from="/tf" to="/vehicle2/tf" />
+ 		<remap from="/tf_static" to="/vehicle2/tf_static" /> 		
+ 		
 		<!-- Location parameters -->
 		<rosparam command="load" file="$(find snippets)/data/locations/$(env LOCATION).yaml" />
 		<!-- Vehicle model -->
@@ -185,6 +191,9 @@
  
  	<group ns="vehicle3">		
 		
+ 		<remap from="/tf" to="/vehicle3/tf" />
+ 		<remap from="/tf_static" to="/vehicle3/tf_static" /> 		
+ 		
 		<!-- Location parameters -->
 		<rosparam command="load" file="$(find snippets)/data/locations/$(env LOCATION).yaml" />
 		<!-- Vehicle model -->
@@ -278,18 +287,6 @@
 	  	<rosparam param="CurrentVeh">0</rosparam>
 	  	<rosparam param="ParentNS">[/vehicle1,/vehicle2,/vehicle3]</rosparam>
 
-		<node pkg="labust_control"
-			  name="FormPosController"
- 			  type="fadp_controller2">
-			
-			<remap from="Enable" to="FormPos_Enable" />
-			<remap from="windup" to="tauAch"/>			
-			<remap from="ref" to="PosRef"/>
-			<remap from="out" to="FormVel"/>
-			<remap from="state" to="stateHat"/>		 
-				 	
-		</node>
-	  	
 	  	<node pkg="formation_control"
 	  		  name="formation_control"
 	  		  type="FormationControl">
@@ -301,19 +298,7 @@
  		<rosparam command="load" file="$(find formation_control)/config/config.yaml" /> 			
 	  	<rosparam param="CurrentVeh">1</rosparam>
 	  	<rosparam param="ParentNS">[/vehicle1,/vehicle2,/vehicle3]</rosparam>
-		
-		<node pkg="labust_control"
-			  name="FormPosController"
- 			  type="fadp_controller2">
 			
- 			<remap from="Enable" to="FormPos_Enable" />
-			<remap from="windup" to="tauAch"/> 			
-			<remap from="ref" to="PosRef"/>
-			<remap from="out" to="FormVel"/>
-			<remap from="state" to="stateHat"/>		 
-				 	
-		</node>
-		
 	  	<node pkg="formation_control"
 	  		  name="formation_control"
 	  		  type="FormationControl"
@@ -321,23 +306,11 @@
 		</node>
 		
  	</group>
- 	<group ns="vehicle3">
+ 	<group ns="vehicle3"> 		
  		
  		<rosparam command="load" file="$(find formation_control)/config/config.yaml" /> 			
 	  	<rosparam param="CurrentVeh">2</rosparam>
 	  	<rosparam param="ParentNS">[/vehicle1,/vehicle2,/vehicle3]</rosparam>
-		
-		<node pkg="labust_control"
-			  name="FormPosController"
- 			  type="fadp_controller2">
-			
- 			<remap from="Enable" to="FormPos_Enable" />
-			<remap from="windup" to="tauAch"/> 			
-			<remap from="ref" to="PosRef"/>
-			<remap from="out" to="FormVel"/>
-			<remap from="state" to="stateHat"/>		 
-				 	
-		</node>
 			  	
 	  	<node pkg="formation_control"
 	  		  name="formation_control"

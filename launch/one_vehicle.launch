@@ -9,7 +9,7 @@
 
  <launch>	
 
-	<group ns="vehicle0">		
+	<group ns="vehicle1">		
 			
 		<!-- Location parameters -->
 		<rosparam command="load" file="$(find snippets)/data/locations/$(env LOCATION).yaml" />
@@ -63,22 +63,25 @@
 			<arg name="config_file" value="$(find labust_uwsim)/scenes/labust_mission_test/test_environment_moje.xml" />
 		</include>
  		
- 		<rosparam command="load" file="$(find formation_control)/config/config_one.yaml" /> 			
-	  	<rosparam param="CurrentVeh">0</rosparam>
-	  	<rosparam param="ParentNS">[/vehicle0]</rosparam>
+
 	  	
-	    <node
-	        pkg="labust_uwsim" 
-	        type="navsts2odom.py" 
+	  	<rosparam  param="eta0"> [5,-5,0,0,0,0.0] </rosparam>
+	  	
+		<node
+	        pkg="labust_sim" 
+	        type="navsts2odom" 
 	        name="vehicle2uwsim">
 	
-	        <!--<remap from="navsts" to="stateHat"/>	-->
+	        <remap from="navsts" to="stateHat"/>	
 	        <!--<remap from="stateHat" to="stateHatAbs" />-->
 	        <!--<remap from="uwsim_hook" to="uwsim_hook" />-->
 	        <!--<param name="base_frame" value="base_link_abs" />-->
 	        
     	</node>
-	  	
+
+    	<rosparam command="load" file="$(find formation_control)/config/config_one.yaml" /> 			
+	  	<rosparam param="CurrentVeh">0</rosparam>
+	  	<rosparam param="ParentNS">[/vehicle1]</rosparam>
 	  	
 	  	<node pkg="formation_control"
 	  		  name="formationControl"
@@ -86,17 +89,17 @@
 	  		  output="screen">
 		</node>	
 
-		<node   pkg="uwsim" 
-        		name="uwsim" 
-        		type="uwsim" 
-        		args="--configfile $(find labust_uwsim)/scenes/labust_mission_test/test_environment.xml
-  				--dataPath  $(find labust_uwsim)/urdf/caddy/">				
-  		</node>
+
 		
 				
 	</group>
 	
-	
+	<node   pkg="uwsim" 
+    		name="uwsim" 
+    		type="uwsim" 
+    		args="--configfile $(find labust_uwsim)/scenes/labust_mission_test/test_environment_moje.xml
+			--dataPath  $(find labust_uwsim)/urdf/caddy/">				
+	</node>
 
 	
 </launch>

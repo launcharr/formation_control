@@ -25,23 +25,23 @@
 		<crestFoamHeight> 0 </crestFoamHeight>
 		<oceanSurfaceHeight> 0 </oceanSurfaceHeight>
 		<fog>
-		<density> 0.1</density>
-		<color>
-		<r>0</r>
-		<g>0.05</g>
-		<b>0.3</b>
-		</color>
+		    <density> 0.1</density>
+		    <color>
+		        <r>0</r>
+		        <g>0.05</g>
+		        <b>0.3</b>
+		    </color>
 		</fog>
 		<color>
-		<r>0.0</r>
-		<g>0.05</g>
-		<b>0.3</b>
+		    <r>0.0</r>
+		    <g>0.05</g>
+		    <b>0.3</b>
 		</color>
 		<attenuation>
-	<r>0.015</r>
-	<g>0.0075 </g>
-	<b> 0.005 </b>
-	</attenuation>
+	        <r>0.015</r>
+	        <g>0.0075 </g>
+	        <b> 0.005 </b>
+	    </attenuation>
 	</oceanState>
 	
 	<simParams>
@@ -280,63 +280,63 @@
 	</vehicle>
 	-->
 	<object>
-	<name>terrain</name>
-	<file>terrain/shipwreck/terrain.ive</file>
-	<position>
-	<x> 0</x>
-	<y> 0 </y>
-	<z> 0 </z>
-	</position>
-	<orientation>
-	<r>-3.14159265</r>
-	<p>0</p>
-	<y>1.57079633</y>
-	</orientation>
-	<physics>
-		<mass>0</mass>
-		<collisionShapeType> trimesh </collisionShapeType>
-	</physics>
+	    <name>terrain</name>
+	    <file>terrain/shipwreck/terrain.ive</file>
+	    <position>
+	        <x> 0</x>
+	        <y> 0 </y>
+	        <z> 0 </z>
+	    </position>
+	    <orientation>
+	        <r>-3.14159265</r>
+	        <p>0</p>
+	        <y>1.57079633</y>
+	    </orientation>
+	    <physics>
+		    <mass>0</mass>
+		    <collisionShapeType> trimesh </collisionShapeType>
+	    </physics>
 	</object>
 	
 	<rosInterfaces>
-	<ROSOdomToPAT>
-	<topic> vehicle1/uwsim_hook </topic>
-	<vehicleName> pladypos </vehicleName>
-	</ROSOdomToPAT>
+	    <ROSOdomToPAT>
+	        <topic> vehicle1/uwsim_hook </topic>
+	        <vehicleName> pladypos </vehicleName>
+	    </ROSOdomToPAT>
 	
-	<ROSOdomToPAT>
-	<topic> vehicle2/uwsim_hook </topic>
-	<vehicleName> pladypos2 </vehicleName>
-	</ROSOdomToPAT>
+	    <ROSOdomToPAT>
+	        <topic> vehicle2/uwsim_hook </topic>
+	        <vehicleName> pladypos2 </vehicleName>
+	    </ROSOdomToPAT>
 	
-	<ROSOdomToPAT>
-	<topic> vehicle3/uwsim_hook </topic>
-	<vehicleName> pladypos3 </vehicleName>
-	</ROSOdomToPAT>
+	    <ROSOdomToPAT>
+	        <topic> vehicle3/uwsim_hook </topic>
+	        <vehicleName> pladypos3 </vehicleName>
+	    </ROSOdomToPAT>
 	
-	<!--<ROSOdomToPAT>
-	<topic> diver/uwsim_hook </topic>
-	<vehicleName> diver </vehicleName>
-	</ROSOdomToPAT>-->
-	     <VirtualCameraToROSImage>
-	<cameraName>bowtech1</cameraName>
-	<imageTopic>diver/view</imageTopic>
-	<infoTopic>diver/view_info</infoTopic>
-	</VirtualCameraToROSImage>
-	<!-- <ImuToROSImu>
-	<name>imu</name>
-	<topic>pladypos/imu</topic>
-	<rate>10</rate>
-	</ImuToROSImu> -->
-	<PressureSensorToROS>
-	<name>diverPressureSensor</name>
-	<topic>diver/pressure</topic>
-	<rate>5</rate>
-	</PressureSensorToROS>
-	<!-- <GPSSensorToROS>
-	<name>GPSSensor</name>
-	<topic>pladypos/gps</topic>
-	<rate>1</rate>
-	</GPSSensorToROS> -->
+	    <!--<ROSOdomToPAT>
+	    <topic> diver/uwsim_hook </topic>
+	    <vehicleName> diver </vehicleName>
+	    </ROSOdomToPAT>-->
+	    <VirtualCameraToROSImage>
+	        <cameraName>bowtech1</cameraName>
+	        <imageTopic>diver/view</imageTopic>
+	        <infoTopic>diver/view_info</infoTopic>
+	    </VirtualCameraToROSImage>
+	    <!-- <ImuToROSImu>
+	    <name>imu</name>
+	    <topic>pladypos/imu</topic>
+	    <rate>10</rate>
+	    </ImuToROSImu> -->
+	    <PressureSensorToROS>
+	        <name>diverPressureSensor</name>
+	        <topic>diver/pressure</topic>
+	        <rate>5</rate>
+	    </PressureSensorToROS>
+	    <!-- <GPSSensorToROS>
+	    <name>GPSSensor</name>
+	    <topic>pladypos/gps</topic>
+	    <rate>1</rate>
+	    </GPSSensorToROS> -->
 	</rosInterfaces>
 </UWSimScene>

@@ -223,6 +223,8 @@ public:
 
 		if(UseExtCon) {
 
+			ROS_INFO("FormPosExt = %f, %f\n", PosRef.position.north, FormPosY = PosRef.position.east);
+
 			auv_msgs::NavSts ControllerRef = PosRef;
 
 //			ROS_INFO(" Position = %f, %f\n",ref->position.north,ref->position.east);
@@ -235,10 +237,12 @@ public:
 		else {
 			FormPosX = PosRef.position.north;
 			FormPosY = PosRef.position.east;
-
+			ROS_INFO("FormPos = %f, %f\n", PosRef.position.north, FormPosY = PosRef.position.east);
 			addFormCentre(FormPosX, FormPosY);
 			DPStart = true;
+			ROS_INFO("FormPos = %f, %f\n", PosRef.position.north, FormPosY = PosRef.position.east);
 		}
+
 
 	}
 
@@ -366,6 +370,11 @@ public:
 		if(!UseExtCon){
 			nh.getParam("kdp",kdp);
 		}
+		else {
+			en.request.enable = true;
+			while(!EnableDP.call(en))
+				ROS_INFO("DYNAMIC POSITIONING NOT STARTED");
+		}
 		nh.param("UseImedStart",UseImedStart, false);
 		nh.param("MaxSpeed",MaxSpeed, 1.0);
 
@@ -400,9 +409,7 @@ public:
 		while(!ConfVelCon.call(req))
 			ROS_INFO("VELOCITY CONTROLLER NOT CONFIGURED\n");
 
-		en.request.enable = true;
-		while(!EnableDP.call(en))
-			ROS_INFO("DYNAMIC POSITIONING NOT STARTED");
+
 
 
 

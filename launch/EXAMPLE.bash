@@ -15,8 +15,8 @@ export USE_JOY=0
 
 #Simulation variables
 export IS_SIM=1
-export USE_NOISE=0
-export USE_VISUALIZATION=1
+export USE_NOISE=1
+export USE_VISUALIZATION=0
 
 #Location for simulation or predefined position
 export LOCATION=split_hrm
