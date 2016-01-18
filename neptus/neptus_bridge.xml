@@ -1,0 +1,94 @@
+<launch>
+	
+	<arg name="veh_ns" default="/vehicle1" />
+	<arg name="veh_ip" default="10.0.10.160" />
+	<arg name="veh_entity" default="160" />
+	<arg name="veh_name" default="buddy" />
+	<arg name="veh_sys_type" default="2" />
+	<arg name="veh_id" default="3841" />
+	<arg name="veh_service" default="imc+info://0.0.0.0/version/5.4.0;imc+udp://10.0.10.160:6002/" />
+		
+   <node pkg="topic_tools" type="throttle" name="resampler" args="messages position 1.0 position_tick" />
+
+   <node pkg="ros_imc" type="simple_bridge" name="buddy_imc">
+    <param name="entity" value="$(arg veh_entity)"/>
+	<param name="id" value="$(arg veh_id)"/>
+	<param name="name" value="$(arg veh_name)"/>	
+	<param name="sys_type" value="$(arg veh_sys_type)"/>
+	<param name="service" value="$(arg veh_service)"/> 
+    <param name="announce" value="true" />
+    <remap from="state_in" to="$(arg veh_ns)/stateHat" />
+   </node>
+ 
+
+   
+   <!-- Neptus UDP additions -->
+ - <arg name="multicast_ip" value="224.0.75.69" />
+   <!-- <arg name="multicast_ip" value="192.168.255.255" /> -->
+   <arg name="use_multicast" value="false" />
+   <arg name="use_broadcast" value="true" />
+   <arg name="local_ip" value="$(arg veh_ip)" />
+   <arg name="local_port" value="6002" />
+   <arg name="remote_ip" value="elitebook" />
+   <arg name="remote_port" value="6001" />
+
+   <!-- For Neptus we need to announce on ports 30100, 30101, 30102, 30103, and 30104 -->
+   <node pkg="ros_imc" type="udp_relay" name="announce0">
+    <param name="local_ip" value="$(arg local_ip)" />
+    <param name="remote_ip" value="$(arg multicast_ip)" />
+    <param name="use_multicast" value="$(arg use_multicast)" />
+    <param name="use_broadcast" value="$(arg use_broadcast)" />
+    <param name="remote_port" value="30100" />
+    <param name="local_port" value="30100" />
+     
+    <remap from="udp_in" to="announce_in" />
+    <remap from="udp_out" to="announce_out" />
+   </node>
+
+   <node pkg="ros_imc" type="udp_relay" name="announce1">
+    <param name="local_ip" value="$(arg local_ip)" />
+    <param name="remote_ip" value="$(arg multicast_ip)" />
+    <param name="use_multicast" value="$(arg use_multicast)" />
+    <param name="use_broadcast" value="$(arg use_broadcast)" />
+    <param name="remote_port" value="30101" />
+    <param name="local_port" value="30101" />
+     
+    <remap from="udp_in" to="announce_in" />
+    <remap from="udp_out" to="announce_out" />
+   </node>
+   <node pkg="ros_imc" type="udp_relay" name="announce2">
+    <param name="local_ip" value="$(arg local_ip)" />
+    <param name="remote_ip" value="$(arg multicast_ip)" />
+    <param name="use_multicast" value="$(arg use_multicast)" />
+    <param name="use_broadcast" value="$(arg use_broadcast)" />
+    <param name="remote_port" value="30102" />
+    <param name="local_port" value="30102" />
+     
+    <remap from="udp_in" to="announce_in" />
+    <remap from="udp_out" to="announce_out" />
+   </node>
+
+   <node pkg="ros_imc" type="udp_relay" name="announce3">
+    <param name="local_ip" value="$(arg local_ip)" />
+    <param name="remote_ip" value="$(arg multicast_ip)" />
+    <param name="use_multicast" value="$(arg use_multicast)" />
+    <param name="use_broadcast" value="$(arg use_broadcast)" />
+    <param name="remote_port" value="30103" />
+    <param name="local_port" value="30103" />
+     
+    <remap from="udp_in" to="announce_in" />
+    <remap from="udp_out" to="announce_out" />
+   </node>
+   
+   <node pkg="ros_imc" type="udp_relay" name="announce4">
+    <param name="local_ip" value="$(arg local_ip)" />
+    <param name="remote_ip" value="$(arg multicast_ip)" />
+    <param name="use_multicast" value="$(arg use_multicast)" />
+    <param name="use_broadcast" value="$(arg use_broadcast)" />
+    <param name="remote_port" value="30104" />
+    <param name="local_port" value="30104" />
+     
+    <remap from="udp_in" to="announce_in" />
+    <remap from="udp_out" to="announce_out" />
+   </node>
+</launch>   

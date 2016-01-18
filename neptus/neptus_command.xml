@@ -1,0 +1,20 @@
+<launch>
+   <arg name="mission_xml_path" default="/home/stdops/mission.xml" />
+ 
+   <node pkg="ros_imc" type="neptus_ros_bridge" name="neptus_command">
+    <rosparam file="$(find buddy)/data/neptus/neptus_params.yaml" />
+    <param name="announce" value="false" />
+    <param name="xml_save_path" type="string" value="$(arg mission_xml_path)" />
+    <remap from="state_in" to="position_tick" />
+   </node>
+
+   <!-- UDP relay connection -->
+   <node pkg="ros_imc" type="udp_relay" name="neptus_udp">
+    <!-- Empty local IP connects to all interfaces -->
+    <param name="use_broadcast" value="true" />
+    <param name="local_ip" value="buddy" />
+    <param name="remote_ip" value="10.0.10.32" />
+    <param name="local_port" value="6002" />
+    <param name="remote_port" value="6001" />
+   </node> 
+</launch>

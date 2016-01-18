@@ -53,13 +53,14 @@ include_directories(
 )
 
 add_executable(FormationControl src/FormationControl.cpp)
-add_executable(CurrentAdaptiveControl src/CurrentAdaptiveControl.cpp)
+add_executable(CurrentAdaptiveFormation src/CurrentAdaptiveFormation.cpp)
+
 target_link_libraries(FormationControl ${catkin_LIBRARIES})
-target_link_libraries(CurrentAdaptiveControl ${catkin_LIBRARIES})
+target_link_libraries(CurrentAdaptiveFormation ${catkin_LIBRARIES})
 
 if (DEFINED catkin_EXPORTED_TARGETS)
 	add_dependencies(FormationControl ${catkin_EXPORTED_TARGETS})
-    add_dependencies(CurrentAdaptiveControl ${catkin_EXPORTED_TARGETS})
+    add_dependencies(CurrentAdaptiveFormation ${catkin_EXPORTED_TARGETS})
 endif()
 
 

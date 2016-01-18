@@ -1,0 +1,355 @@
+<!--/*****************************************************************
+ * EXAMPLE.launch
+ *
+ *  Created on: Oct 30, 2014
+ *      Author: Filip Mandic
+ *
+ *****************************************************************/-->
+
+<launch>
+
+	<group ns="vehicle1">
+		
+		<remap from="/tf" to="/vehicle1/tf" />
+ 		<remap from="/tf_static" to="/vehicle1/tf_static" />		
+		
+		<!-- Location parameters -->
+		<rosparam command="load" file="$(find snippets)/data/locations/$(env LOCATION).yaml" />
+		<!-- Vehicle model -->
+		<rosparam command="load" file="$(env MODEL)" />
+		<!-- Navigation filter parameters -->
+		<rosparam command="load" file="$(find launch_templates)/example/config/navparams_ex.yaml" />
+		<!-- Control parameters -->
+		<rosparam command="load" file="$(find launch_templates)/example/config/control.yaml" /> 
+	
+		
+		<!-- ========================================================= -->
+	    <!-- == Launch settings ====================================== -->
+	    <!-- ========================================================= -->
+
+		<include file="$(find launch_templates)/launch/labust_main_template.launch">
+	
+			<!-- Vehicle settings ======================================== -->
+			<arg name="vehicle" value ="$(env VEHICLE)" /> 
+			<arg name="topside" value="false" />
+	
+			<!-- Select templates to include -->
+			<arg name="labust_manual" value="true" />
+			<arg name="labust_navigation" value="true" />
+			<arg name="labust_control" value="true" />
+			<arg name="labust_primitives" value="false" />
+			<arg name="labust_mission" value="$(optenv USE_MC 0)" />
+			<arg name="labust_sim" value="$(optenv IS_SIM 0)" />
+<!--			<arg name="labust_visualization" value="$(optenv USE_VISUALIZATION 0)" /> -->
+			 
+			<!-- Manual control settings ============================= -->
+			<arg name="use_joy" value="$(optenv USE_JOY 0)" />
+			<arg name="joy_dev" value="$(optenv JOYSTICK /dev/input/js0)" /> 
+				
+			<!-- Control settings ==================================== -->
+			<arg name="use_ident" value="$(optenv USE_IDENTIFICATION 0)" />
+			<arg name="use_trackpoint" value="false" />
+		 
+			<!-- Navigation settings ================================= -->
+			<arg name="ekfAbs" value="false" />
+			<arg name="ekfSB" value="false" />
+	
+			<!-- Mission execution settings ========================== -->
+			<arg name="labust_mission_path" value="$(find labust_mission)" /> 
+			<arg name="xml_save_path" value="$(find labust_mission)/data/mission.xml" /> 
+			<arg name="neptus_parser" value="false" />
+			<arg name="mission_parser" value="false" />
+			
+			<!-- Visualization settings ============================== -->
+			<arg name="config_file" value="$(find labust_uwsim)/scenes/labust_mission_test/test_environment_moje.xml" />
+			
+			
+		</include>
+		<rosparam  param="eta0"> [5,5,0,0,0,0.0] </rosparam>
+		
+		<node
+	        pkg="labust_sim" 
+	        type="navsts2odom" 
+	        name="vehicle2uwsim">
+	
+	        <remap from="navsts" to="stateHat"/>	
+	        <!--<remap from="stateHat" to="stateHatAbs" />-->
+	        <!--<remap from="uwsim_hook" to="uwsim_hook" />-->
+	        <!--<param name="base_frame" value="base_link_abs" />-->
+	        
+    	</node>
+		
+	
+	    <!-- ========================================================= -->
+	    <!-- == Rosbag and multimaster includes ====================== -->
+	    <!-- ========================================================= -->
+		
+	 	<node 
+			if="$(optenv USE_ROSBAG 0)" 
+			pkg="rosbag" 
+			type="record" 
+			name="rosbag" 
+			args="-a -o /extern/bags/pladypos_bag" />
+	
+		<include 
+			if="$(optenv USE_MULTIMASTER 0)" 
+			file="$(find split0914_hrm)/launch/pladypos/pladypos/multi_master.launch" />
+	
+	</group>
+
+ 	<group ns="vehicle2">		
+		
+ 		<remap from="/tf" to="/vehicle2/tf" />
+ 		<remap from="/tf_static" to="/vehicle2/tf_static" /> 		
+ 		
+		<!-- Location parameters -->
+		<rosparam command="load" file="$(find snippets)/data/locations/$(env LOCATION).yaml" />
+		<!-- Vehicle model -->
+		<rosparam command="load" file="$(env MODEL)" />
+		<!-- Navigation filter parameters -->
+		<rosparam command="load" file="$(find launch_templates)/example/config/navparams_ex.yaml" />
+		<!-- Control parameters -->
+		<rosparam command="load" file="$(find launch_templates)/example/config/control.yaml" /> 
+
+			
+		
+		<!-- ========================================================= -->
+	    <!-- == Launch settings ====================================== -->
+	    <!-- ========================================================= -->
+
+		<include file="$(find launch_templates)/launch/labust_main_template.launch">
+	
+			<!-- Vehicle settings ======================================== -->
+			<arg name="vehicle" value ="$(env VEHICLE)" /> 
+			<arg name="topside" value="false" />
+	
+			<!-- Select templates to include -->
+			<arg name="labust_manual" value="true" />
+			<arg name="labust_navigation" value="true" />
+			<arg name="labust_control" value="true" />
+			<arg name="labust_primitives" value="false" />
+			<arg name="labust_mission" value="$(optenv USE_MC 0)" />
+			<arg name="labust_sim" value="$(optenv IS_SIM 0)" />
+<!--			<arg name="labust_visualization" value="$(optenv USE_VISUALIZATION 0)" /> -->
+			 
+			<!-- Manual control settings ============================= -->
+			<arg name="use_joy" value="$(optenv USE_JOY 0)" />
+			<arg name="joy_dev" value="$(optenv JOYSTICK /dev/input/js0)" /> 
+				
+			<!-- Control settings ==================================== -->
+			<arg name="use_ident" value="$(optenv USE_IDENTIFICATION 0)" />
+			<arg name="use_trackpoint" value="false" />
+		 
+			<!-- Navigation settings ================================= -->
+			<arg name="ekfAbs" value="false" />
+			<arg name="ekfSB" value="false" />
+	
+			<!-- Mission execution settings ========================== -->
+			<arg name="labust_mission_path" value="$(find labust_mission)" /> 
+			<arg name="xml_save_path" value="$(find labust_mission)/data/mission.xml" /> 
+			<arg name="neptus_parser" value="false" />
+			<arg name="mission_parser" value="false" />
+			
+			<!-- Visualization settings ============================== -->
+			<arg name="config_file" value="$(find labust_uwsim)/scenes/labust_mission_test/test_environment_moje.xml" />
+			
+			
+		</include>
+		
+		<rosparam  param="eta0"> [-5,5,0,0,0,0.0] </rosparam>	
+		
+		<node
+	        pkg="labust_sim" 
+	        type="navsts2odom" 
+	        name="vehicle2uwsim">
+	
+	        <remap from="navsts" to="stateHat"/>	
+	        
+	        <!--<remap from="stateHat" to="stateHatAbs" />-->
+	        <!--<remap from="uwsim_hook" to="uwsim_hook" />-->
+	        <!--<param name="base_frame" value="base_link_abs" />-->
+	        
+    	</node>
+		
+	
+	    <!-- ========================================================= -->
+	    <!-- == Rosbag and multimaster includes ====================== -->
+	    <!-- ========================================================= -->
+		
+	 	<node 
+			if="$(optenv USE_ROSBAG 0)" 
+			pkg="rosbag" 
+			type="record" 
+			name="rosbag" 
+			args="-a -o /extern/bags/pladypos_bag" />
+	
+		<include 
+			if="$(optenv USE_MULTIMASTER 0)" 
+			file="$(find split0914_hrm)/launch/pladypos/pladypos/multi_master.launch" />
+		
+	</group>
+ 
+ 	<group ns="vehicle3">		
+		
+ 		<remap from="/tf" to="/vehicle3/tf" />
+ 		<remap from="/tf_static" to="/vehicle3/tf_static" /> 		
+ 		
+		<!-- Location parameters -->
+		<rosparam command="load" file="$(find snippets)/data/locations/$(env LOCATION).yaml" />
+		<!-- Vehicle model -->
+		<rosparam command="load" file="$(env MODEL)" />
+		<!-- Navigation filter parameters -->
+		<rosparam command="load" file="$(find launch_templates)/example/config/navparams_ex.yaml" />
+		<!-- Control parameters -->
+		<rosparam command="load" file="$(find launch_templates)/example/config/control.yaml" /> 
+
+					
+		
+		<!-- ========================================================= -->
+	    <!-- == Launch settings ====================================== -->
+	    <!-- ========================================================= -->
+
+		<include file="$(find launch_templates)/launch/labust_main_template.launch">
+	
+			<!-- Vehicle settings ======================================== -->
+			<arg name="vehicle" value ="$(env VEHICLE)" /> 
+			<arg name="topside" value="false" />
+	
+			<!-- Select templates to include -->
+			<arg name="labust_manual" value="true" />
+			<arg name="labust_navigation" value="true" />
+			<arg name="labust_control" value="true" />
+			<arg name="labust_primitives" value="false" />
+			<arg name="labust_mission" value="$(optenv USE_MC 0)" />
+			<arg name="labust_sim" value="$(optenv IS_SIM 0)" />
+<!--			<arg name="labust_visualization" value="$(optenv USE_VISUALIZATION 0)" /> -->
+			 
+			<!-- Manual control settings ============================= -->
+			<arg name="use_joy" value="$(optenv USE_JOY 0)" />
+			<arg name="joy_dev" value="$(optenv JOYSTICK /dev/input/js0)" /> 
+				
+			<!-- Control settings ==================================== -->
+			<arg name="use_ident" value="$(optenv USE_IDENTIFICATION 0)" />
+			<arg name="use_trackpoint" value="false" />
+		 
+			<!-- Navigation settings ================================= -->
+			<arg name="ekfAbs" value="false" />
+			<arg name="ekfSB" value="false" />
+	
+			<!-- Mission execution settings ========================== -->
+			<arg name="labust_mission_path" value="$(find labust_mission)" /> 
+			<arg name="xml_save_path" value="$(find labust_mission)/data/mission.xml" /> 
+			<arg name="neptus_parser" value="false" />
+			<arg name="mission_parser" value="false" />
+			
+			<!-- Visualization settings ============================== -->
+			<arg name="config_file" value="$(find labust_uwsim)/scenes/labust_mission_test/test_environment_moje.xml" />
+			
+			
+		</include>
+	
+		<rosparam  param="eta0"> [5,-5,0,0,0,0.0] </rosparam>	
+		
+		<node
+	        pkg="labust_sim" 
+	        type="navsts2odom" 
+	        name="vehicle2uwsim">
+	
+	        <remap from="navsts" to="stateHat"/>	
+	        <!--<remap from="stateHat" to="stateHatAbs" />-->
+	        <!--<remap from="uwsim_hook" to="uwsim_hook" />-->
+	        <!--<param name="base_frame" value="base_link_abs" />-->
+	        
+    	</node>
+		
+	
+	    <!-- ========================================================= -->
+	    <!-- == Rosbag and multimaster includes ====================== -->
+	    <!-- ========================================================= -->
+		
+	 	<node 
+			if="$(optenv USE_ROSBAG 0)" 
+			pkg="rosbag" 
+			type="record" 
+			name="rosbag" 
+			args="-a -o /extern/bags/pladypos_bag" />
+	
+		<include 
+			if="$(optenv USE_MULTIMASTER 0)" 
+			file="$(find split0914_hrm)/launch/pladypos/pladypos/multi_master.launch" />
+			
+									
+ 	</group>	
+ 	
+ 	<group ns="vehicle1">
+ 		
+ 		<rosparam command="load" file="$(find formation_control)/config/config.yaml" /> 			
+	  	<rosparam param="CurrentVeh">0</rosparam>
+	  	<rosparam param="ParentNS">[/vehicle1,/vehicle2,/vehicle3]</rosparam>
+
+	  	<node pkg="formation_control"
+	  		  name="formation_control"
+	  		  type="FormationControl">
+		</node>
+		
+		<include file="$(find formation_control)/neptus/neptus_bridge.xml">
+			<arg name="veh_ip" value="10.0.10.161" />
+			<arg name="veh_ns" value="/vehicle1" />
+			<arg name="veh_name" value="buddy" />			
+			<arg name="veh_entity" value="161" />
+			<arg name="veh_id" value="3841" />
+			<arg name="veh_sys_type" value="2" />			
+			<arg name="veh_service" value="imc+info://0.0.0.0/version/5.4.0;imc+udp://10.0.10.161:6002/" />	
+		</include>
+				
+ 	</group>
+ 	<group ns="vehicle2">
+ 		
+ 		<rosparam command="load" file="$(find formation_control)/config/config.yaml" /> 			
+	  	<rosparam param="CurrentVeh">1</rosparam>
+	  	<rosparam param="ParentNS">[/vehicle1,/vehicle2,/vehicle3]</rosparam>
+			
+	  	<node pkg="formation_control"
+	  		  name="formation_control"
+	  		  type="FormationControl"
+	  		  output="screen">
+		</node>
+		
+		<include file="$(find formation_control)/neptus/neptus_bridge.xml">
+			<arg name="veh_ip" value="10.0.10.162" />
+			<arg name="veh_ns" value="/vehicle2" />
+			<arg name="veh_name" value="buddy2" />			
+			<arg name="veh_entity" value="162" />
+			<arg name="veh_id" value="3842" />
+			<arg name="veh_sys_type" value="2" />			
+			<arg name="veh_service" value="imc+info://0.0.0.0/version/5.4.0;imc+udp://10.0.10.162:6002/" />		</include>
+		
+ 	</group>
+ 	<group ns="vehicle3"> 		
+ 		
+ 		<rosparam command="load" file="$(find formation_control)/config/config.yaml" /> 			
+	  	<rosparam param="CurrentVeh">2</rosparam>
+	  	<rosparam param="ParentNS">[/vehicle1,/vehicle2,/vehicle3]</rosparam>
+			  	
+	  	<node pkg="formation_control"
+	  		  name="formation_control"
+	  		  type="FormationControl"
+	  		  >
+		</node>	
+		
+		<include file="$(find formation_control)/neptus/neptus_bridge.xml">
+			<arg name="veh_ip" value="10.0.10.162" />
+			<arg name="veh_ns" value="/vehicle3" />
+			<arg name="veh_name" value="buddy3" />			
+			<arg name="veh_entity" value="163" />
+			<arg name="veh_id" value="3843" />
+			<arg name="veh_sys_type" value="2" />			
+			<arg name="veh_service" value="imc+info://0.0.0.0/version/5.4.0;imc+udp://10.0.10.163:6002/" />				
+				
+		</include>		
+		
+ 	</group>
+
+
+	
+</launch>

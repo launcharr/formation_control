@@ -16,13 +16,14 @@
 class CurrAdapControl {
 
 public:
-
+	int j;
 
 
 private:
 
+	int i;
 
-}
+};
 
 int main(int argc, char **argv) {
 
