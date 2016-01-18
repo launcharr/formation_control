@@ -131,8 +131,8 @@ public:
 				Vxi = VehState[i].body_velocity.x;
 				Vyi = VehState[i].body_velocity.y;
 
-//				ROS_INFO("Udaljenost od %d X = %f\n", i,XCurr - Xi);
-//				ROS_INFO("Udaljenost od %d Y = %f\n", i,YCurr - Yi);
+				ROS_INFO("Pogreska po X %d = %f\n", i,XCurr - Xi + FX);
+				ROS_INFO("Pogreska po Y %d = %f\n", i,YCurr - Yi + FY);
 
 				/* consensus control*/
 				VelConReq.twist.linear.x = VelConReq.twist.linear.x - DG*G*(XCurr - Xi + FX);
