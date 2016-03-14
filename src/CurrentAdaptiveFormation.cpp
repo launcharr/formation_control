@@ -16,18 +16,42 @@
 
 class CurrAdapControl {
 
-public:
+	public:
+
+	CurrAdapControl() {
+
+		ros::NodeHandle nh;
+
+		nh.param("VehNum", VehNum, 0);
+
+		if(VehNum > 0) {
+			CurrentState = new geometry_msgs::TwistStamped[VehNum];
+			VehState = new auv_msgs::NavSts[VehNum];
+
+			//StateNH = new ros::Subscriber[VehNum];
+			CurrentHandle = new ros::Subscriber[VehNum];
+
+			init();
+		}
+	}
+
+	~CurrAdapControl() {
+		delete [] VehState;
+		delete [] CurrentState;
+		//delete [] CurrentNH;
+		//delete [] StateNH;
+	}
+
+
 
 	void init() {
 		ros::NodeHandle nh;
 
 		for(int i=0; i<VehNum; i++){
 
-					CurrentNode[i] = nh.subscribe<geometry_msgs::TwistStamped>(ParentNS[i]+"/currentsHat",2,boost::bind(&CurrAdapControl::onEstimate, this, _1, i));
+			CurrentHandle[i] = nh.subscribe<geometry_msgs::TwistStamped>(ParentNS[i]+"/currentsHat",2,boost::bind(&CurrAdapControl::onEstimate, this, _1, i));
 
-
-		//			ROS_INFO("SubscriberNS = %s\n", (ParentNS[i]+"/stateHat").c_str());
-				}
+		}
 
 	}
 
@@ -49,7 +73,7 @@ public:
 
 private:
 
-	ros::NodeHandle *CurrentNode;
+	ros::Subscriber *CurrentHandle;
 	ros::Subscriber *StateNode;
 
 	geometry_msgs::TwistStamped *CurrentState;

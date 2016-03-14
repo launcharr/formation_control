@@ -25,7 +25,7 @@ kd: 0.0
 # Force vector corr factor
 ni: 0.5
 # repel radius
-rf: 1.8
+rf: 1.0
 
 # Gain matrix
 GMat: [0, 0.1, 0.1, 0.1, 0, 0.1, 0.1, 0.1, 0]

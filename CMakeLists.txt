@@ -7,6 +7,7 @@ project(formation_control)
 find_package(catkin REQUIRED COMPONENTS
   auv_msgs
   navcon_msgs
+  geometry_msgs
   roscpp
   rospy
   message_generation
@@ -39,7 +40,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES formation_control
-	CATKIN_DEPENDS auv_msgs navcon_msgs roscpp rospy
+	CATKIN_DEPENDS auv_msgs navcon_msgs geometry_msgs roscpp rospy
 #  DEPENDS system_lib
 )
 
@@ -54,13 +55,16 @@ include_directories(
 
 add_executable(FormationControl src/FormationControl.cpp)
 add_executable(CurrentAdaptiveFormation src/CurrentAdaptiveFormation.cpp)
+add_executable(current_node src/current_node.cpp)
 
 target_link_libraries(FormationControl ${catkin_LIBRARIES})
 target_link_libraries(CurrentAdaptiveFormation ${catkin_LIBRARIES})
+target_link_libraries(current_node ${catkin_LIBRARIES})
 
 if (DEFINED catkin_EXPORTED_TARGETS)
 	add_dependencies(FormationControl ${catkin_EXPORTED_TARGETS})
-    add_dependencies(CurrentAdaptiveFormation ${catkin_EXPORTED_TARGETS})
+	add_dependencies(current_node ${catkin_EXPORTED_TARGETS})
+	add_dependencies(CurrentAdaptiveFormation ${catkin_EXPORTED_TARGETS})
 endif()
 
 

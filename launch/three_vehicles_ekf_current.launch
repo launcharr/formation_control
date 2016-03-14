@@ -305,8 +305,7 @@
 			
 	  	<node pkg="formation_control"
 	  		  name="formation_control"
-	  		  type="FormationControl"
-	  		  output="screen">
+	  		  type="FormationControl">
 		</node>
 		
  	</group>
@@ -323,8 +322,15 @@
 	  		  >
 		</node>	
 		
+		 <node pkg="formation_control"
+ 		  name="current_estim"
+ 		  type="current_node"
+		  output="screen">
+ 		</node>		
+		
  	</group>
 
+ 		  
 	<node   pkg="uwsim" 
         	name="uwsim" 
         	type="uwsim" 

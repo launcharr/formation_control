@@ -10,94 +10,112 @@
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/TwistStamped.h>
 
-struct cartesian{
-	double x;
-	double y;
-};
-
-
 
 class CurrentNode {
+
+public:
 
 	CurrentNode(){
 		ros::NodeHandle nh;
 
+		ROS_INFO("PARAM IN!!!!!\n\n\n");
 		nh.param("VehNum", VehNum, 0);
+		ROS_INFO("PARAM OUTO %d!!!!!\n\n\n", VehNum);
 
 		if(VehNum > 0) {
-			CurrentState = new geometry_msgs::TwistStamped[VehNum];
 			VehState = new auv_msgs::NavSts[VehNum];
 
-			StateNode = new ros::Subscriber[VehNum];
-			CurrentNode = new ros::Publisher[VehNum];
+			FCGotState = new bool[VehNum];
+			StateNH = new ros::Subscriber[VehNum];
+			CurrentNH = new ros::Publisher[VehNum];
 
 			init();
 		}
 	}
 
 	~CurrentNode() {
+		delete [] FCGotState;
 		delete [] VehState;
-		delete [] CurrentState;
-		delete [] VehState;
-		delete [] StateNode;
+		delete [] CurrentNH;
+		delete [] StateNH;
 	}
 
-public:
 
 	void init() {
 		ros::NodeHandle nh;
 
-		nh.getParam("ParentNS", ParentNS);
+		ROS_INFO("INIT START!!!!!\n\n\n");
 
-		for(int i=0; i<VehNum; i++){
+		if (ros::param::has("ParentNS")) {
 
-			StateNode[i] = nh.subscribe<auv_msgs::NavSts>(ParentNS[i]+"/stateHat",2,boost::bind(&CurrentNode::onEstimate, this, _1, i));
+			nh.getParam("ParentNS", ParentNS);
 
-			CurrentNode[i] = nh.advertise<geometry_msgs::TwistStamped>(ParentNS[i]+"/currents",1);
+			for(int i=0; i<VehNum; i++){
+
+				FCGotState[i] = false;
+
+				ROS_INFO("\n\ni = %d!!!!!\n\n\n", i);
+
+				StateNH[i] = nh.subscribe<auv_msgs::NavSts>(ParentNS[i]+"/stateHat",1,boost::bind(&CurrentNode::onEstimate, this, _1, i));
+
+				CurrentNH[i] = nh.advertise<geometry_msgs::TwistStamped>(ParentNS[i]+"/currents",2);
+			}
 		}
 
+
+		ROS_INFO("INIT END!!!!!\n\n\n");
 	}
 
 	void onEstimate(const auv_msgs::NavSts::ConstPtr& state, const int& i) {
 
+		VehState[i] = *state;
+		FCGotState[i] = true;
+
+		updateCurrent();
+	}
+
+	void updateCurrent(){
+
 		ros::NodeHandle nh;
 		double angle;
-		std::vector<double> currFnc, VehStateCurr, VehStatei, mul;
-
-		VehState[i] = *state;
+		std::vector<double> currFnc(2), VehStateCurr(2), VehStatei(2), mul(2);
 
 		for(int j = 0; j < VehNum; j++){
 
-			currFnc = CurrentFnc(VehState[j]);
-			angle = atan2(currFnc[1], currFnc[0]);
+			if(FCGotState[j]){
 
-			VehStateCurr[0] = VehState[j].position.east;
-			VehStateCurr[1] = VehState[j].position.north;
+				currFnc = CurrentFnc(VehState[j]);
+				angle = -atan2(currFnc[1], currFnc[0]);
 
-			for(int k = 0; k < VehNum; k++) {
-				if(k != j){
-					VehStatei[0] = VehState[k].position.east;
-					VehStatei[1] = VehState[k].position.north;
+				VehStateCurr[0] = VehState[j].position.north;
+				VehStateCurr[1] = VehState[j].position.east;
 
-					mul = insideConeFnc(VehStateCurr, VehStatei,angle);
+				for(int k = 0; k < VehNum; k++) {
 
-					currFnc[0] =* mul[0];
-					currFnc[1] =* mul[1];
+					if(k != j && FCGotState[k]){
+
+						VehStatei[0] = VehState[k].position.north;
+						VehStatei[1] = VehState[k].position.east;
+
+						mul = insideConeFnc(VehStateCurr, VehStatei,angle);
+
+						currFnc[0] *= mul[0];
+						currFnc[1] *= mul[1];
+					}
 				}
-			}
-			CurrentState[j].twist.linear.x = currFnc[0];
-			CurrentState[j].twist.linear.y = currFnc[1];
-		}
 
-		for(int j = 0; j < VehNum; j++){
-			CurrentNode[j].publish(CurrentState[j]);
+
+				CurrentState.twist.linear.x = currFnc[0];
+				CurrentState.twist.linear.y = currFnc[1];
+				ROS_INFO("\n\n[%f, %f]\n\n\n",currFnc[0], currFnc[1]);
+				CurrentNH[j].publish(CurrentState);
+			}
 		}
 	}
 
-
 	std::vector<double> CurrentFnc(auv_msgs::NavSts state){
 
-		std::vector<double> curr;
+		std::vector<double> curr(2);
 
 		curr[0] = -0.2;
 		curr[1] = -0.2;
@@ -108,7 +126,7 @@ public:
 
 	std::vector<double> insideConeFnc(const std::vector<double> Vc, const std::vector<double> Vi, const double angle){
 
-		std::vector<double> Vir, currMul;
+		std::vector<double> Vir(2), currMul(2);
 
 		Vir = rotateVectAP(Vi, Vc,-angle);
 
@@ -130,7 +148,7 @@ public:
 	std::vector<double> rotateVectAP(const std::vector<double> p1, const std::vector<double> p, const double angle){
 
 
-		std::vector<double> tmp, res;
+		std::vector<double> tmp(2), res(2);
 
 		// substract origin
 		tmp[0] = p1[0] - p[0];
@@ -148,11 +166,13 @@ public:
 
 private:
 
-	ros::NodeHandle *CurrentNode;
-	ros::Subscriber *StateNode;
+	ros::Publisher *CurrentNH;
+	ros::Subscriber *StateNH;
 
-	geometry_msgs::TwistStamped *CurrentState;
+	geometry_msgs::TwistStamped CurrentState;
 	auv_msgs::NavSts *VehState;
+	bool *FCGotState;
+
 
 	int VehNum;
 
@@ -165,8 +185,11 @@ int main(int argc, char **argv) {
 
 	ros::init(argc, argv, "current_node");
 
-	CurrentNode curr_node;
+	ROS_INFO("\n\nSTART!!!!!\n\n\n");
 
+	CurrentNode currStart;
+
+	ROS_INFO("\n\nSPIN!!!!!\n\n\n");
 	ros::spin();
 
 	return 0;
