@@ -410,10 +410,6 @@ public:
 		while(!ConfVelCon.call(req))
 			ROS_INFO("VELOCITY CONTROLLER NOT CONFIGURED\n");
 
-
-
-
-
 	}
 
 private:

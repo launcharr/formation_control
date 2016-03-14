@@ -11,17 +11,53 @@
 #include <navcon_msgs/ConfigureVelocityController.h>
 #include <navcon_msgs/EnableControl.h>
 #include <formation_control/Formation.h>
+#include <geometry_msgs/TwistStamped.h>
 
 
 class CurrAdapControl {
 
 public:
-	int j;
 
+	void init() {
+		ros::NodeHandle nh;
+
+		for(int i=0; i<VehNum; i++){
+
+					CurrentNode[i] = nh.subscribe<geometry_msgs::TwistStamped>(ParentNS[i]+"/currentsHat",2,boost::bind(&CurrAdapControl::onEstimate, this, _1, i));
+
+
+		//			ROS_INFO("SubscriberNS = %s\n", (ParentNS[i]+"/stateHat").c_str());
+				}
+
+	}
+
+	void onEstimate(const geometry_msgs::TwistStamped::ConstPtr& curr, int i) {
+
+		float currentX, currentY;
+
+		currentX = curr->twist.linear.x;
+		currentY = curr->twist.linear.y;
+
+	}
+
+
+	void FormationUpdate() {
+
+
+
+	}
 
 private:
 
-	int i;
+	ros::NodeHandle *CurrentNode;
+	ros::Subscriber *StateNode;
+
+	geometry_msgs::TwistStamped *CurrentState;
+	auv_msgs::NavSts *VehState;
+
+	int VehNum;
+
+	std::vector<std::string> ParentNS;
 
 };
 
