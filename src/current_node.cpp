@@ -85,7 +85,7 @@ public:
 			if(FCGotState[j]){
 
 				currFnc = CurrentFnc(VehState[j]);
-				angle = -atan2(currFnc[1], currFnc[0]);
+				angle = atan2(currFnc[1], currFnc[0]);
 
 				VehStateCurr[0] = VehState[j].position.north;
 				VehStateCurr[1] = VehState[j].position.east;
@@ -107,7 +107,7 @@ public:
 
 				CurrentState.twist.linear.x = currFnc[0];
 				CurrentState.twist.linear.y = currFnc[1];
-				ROS_INFO("\n\n[%f, %f]\n\n\n",currFnc[0], currFnc[1]);
+				ROS_INFO("\nC[%d] = [%f, %f]\n",j,currFnc[0], currFnc[1]);
 				CurrentNH[j].publish(CurrentState);
 			}
 		}
@@ -129,9 +129,11 @@ public:
 		std::vector<double> Vir(2), currMul(2);
 
 		Vir = rotateVectAP(Vi, Vc,-angle);
+		ROS_INFO("\nVc = [%f, %f]\nVi = [%f, %f]\nVir = [%f, %f]\n",Vc[0], Vc[1], Vi[0], Vi[1], Vir[0], Vir[1]);
+		ROS_INFO("\nRV = [%f, %f]\n",Vir[0] - Vc[0], Vir[1] - Vc[1]);
 
 		// if is inside quadratic function
-		if( Vir[0] - Vc[0] < -4*(Vir[1] - Vc[1]) + 4 && Vir[0] > 0){
+		if( Vir[0] - Vc[0] < -4*(pow((Vir[1] - Vc[1]),2) - 1) && Vir[0] - Vc[0] > 0){
 
 			currMul[0] = 0.9;
 			currMul[1] = 0.9;
@@ -157,8 +159,8 @@ public:
 		res[0] = tmp[0]*cos(angle) - tmp[1]*sin(angle);
 		res[1] = tmp[0]*sin(angle) + tmp[1]*cos(angle);
 
-		res[0] =+ p[0];
-		res[1] =+ p[1];
+		res[0] += p[0];
+		res[1] += p[1];
 
 		return res;
 	}
