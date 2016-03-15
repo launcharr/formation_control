@@ -105,6 +105,7 @@ public:
 				}
 
 
+				CurrentState.header.stamp = ros::Time::now();
 				CurrentState.twist.linear.x = currFnc[0];
 				CurrentState.twist.linear.y = currFnc[1];
 				ROS_INFO("\nC[%d] = [%f, %f]\n",j,currFnc[0], currFnc[1]);
@@ -138,7 +139,7 @@ public:
 			currMul[0] = 0.9;
 			currMul[1] = 0.9;
 		}
-		else{
+		else {
 			currMul[0] = 1.0;
 			currMul[1] = 1.0;
 		}

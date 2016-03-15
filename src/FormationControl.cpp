@@ -195,7 +195,7 @@ public:
 		VelConReq.disable_axis.pitch = true;
 		VelConReq.disable_axis.roll = true;
 		VelConReq.disable_axis.yaw = true;
-
+		VelConReq.header.stamp = ros::Time::now();
 		/* publish requested velocity */
 		VelConNode.publish(VelConReq);
 //		ROS_INFO("\n\n\nKraj publishanja zeljene brzine\n\n\n");
@@ -233,6 +233,7 @@ public:
 			addFormCentre(ControllerRef.position.north, ControllerRef.position.east);
 //			ROS_INFO(" Position = %f, %f\n",ControllerRef.position.north,ControllerRef.position.east);
 
+			ControllerRef.header.stamp = ros::Time::now();
 			VehPosRef.publish(ControllerRef);
 		}
 		else {
@@ -373,6 +374,7 @@ public:
 		}
 		else {
 			en.request.enable = true;
+			ros::service::waitForService(ParentNS[CurrentVeh]+"/FormPos_Enable", 100000);
 			while(!EnableDP.call(en))
 				ROS_INFO("DYNAMIC POSITIONING NOT STARTED");
 		}
@@ -407,6 +409,8 @@ public:
 		req.request.desired_mode[3] = -1;
 		req.request.desired_mode[4] = -1;
 		req.request.desired_mode[5] = -1;
+
+		ros::service::waitForService(ParentNS[CurrentVeh]+"/ConfigureVelocityController", 100000);
 		while(!ConfVelCon.call(req))
 			ROS_INFO("VELOCITY CONTROLLER NOT CONFIGURED\n");
 

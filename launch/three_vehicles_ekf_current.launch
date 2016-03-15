@@ -318,15 +318,22 @@
 			  	
 	  	<node pkg="formation_control"
 	  		  name="formation_control"
-	  		  type="FormationControl"
-	  		  >
+	  		  type="FormationControl">
 		</node>	
 		
 		 <node pkg="formation_control"
  		  name="current_estim"
  		  type="current_node"
 		  output="screen">
- 		</node>		
+ 		</node>
+ 		
+ 		<rosparam command="load" file="$(find formation_control)/config/config_line_form.yaml" />
+		<node pkg="formation_control"
+ 		  name="current_adapt"
+ 		  type="CurrentAdaptiveFormation"
+		  output="screen">
+ 		</node> 		
+ 				
 		
  	</group>
 

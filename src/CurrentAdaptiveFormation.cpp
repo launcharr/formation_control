@@ -22,23 +22,30 @@ class CurrAdapControl {
 
 		ros::NodeHandle nh;
 
+		AdaptFCEnableNH = nh.subscribe<std_msgs::Bool>("/AdaptFCEnable", 2, &CurrAdapControl::EnableController, this);
+
+		AdaptFCEnable = false;
+
 		nh.param("VehNum", VehNum, 0);
 
+		ROS_INFO("VEHNUM = %d!!!!!\n\n\n",VehNum);
+
 		if(VehNum > 0) {
+
 			CurrentState = new geometry_msgs::TwistStamped[VehNum];
-			VehState = new auv_msgs::NavSts[VehNum];
+			//VehState = new auv_msgs::NavSts[VehNum];
 
+			FCGotCurr = new bool[VehNum];
+			CurrentNH = new ros::Subscriber[VehNum];
 			//StateNH = new ros::Subscriber[VehNum];
-			CurrentHandle = new ros::Subscriber[VehNum];
-
 			init();
 		}
 	}
 
 	~CurrAdapControl() {
-		delete [] VehState;
+		//delete [] VehState;
 		delete [] CurrentState;
-		//delete [] CurrentNH;
+		delete [] CurrentNH;
 		//delete [] StateNH;
 	}
 
@@ -47,9 +54,20 @@ class CurrAdapControl {
 	void init() {
 		ros::NodeHandle nh;
 
+		// get parameters
+		nh.getParam("ParentNS", ParentNS);
+		nh.getParam("FormLineX", FormLineX);
+		nh.getParam("FormLineY", FormLineY);
+		nh.param("FromDist", FormDist, 1.0);
+		nh.param("deltaPhi", deltaPhi, 0.05);
+
+
 		for(int i=0; i<VehNum; i++){
 
-			CurrentHandle[i] = nh.subscribe<geometry_msgs::TwistStamped>(ParentNS[i]+"/currentsHat",2,boost::bind(&CurrAdapControl::onEstimate, this, _1, i));
+			FCGotCurr[i] = false;
+
+			CurrentNH[i] = nh.subscribe<geometry_msgs::TwistStamped>(ParentNS[i]+"/currentsHat",2,boost::bind(&CurrAdapControl::onEstimate, this, _1, i));
+			FormationNH = nh.advertise<formation_control::Formation>("/FormChange",1);
 
 		}
 
@@ -57,31 +75,74 @@ class CurrAdapControl {
 
 	void onEstimate(const geometry_msgs::TwistStamped::ConstPtr& curr, int i) {
 
-		float currentX, currentY;
+		int k = 0;
+		double CurrDirectionNew = 0.0;
 
-		currentX = curr->twist.linear.x;
-		currentY = curr->twist.linear.y;
+		CurrentState[i] = *curr;
+		FCGotCurr[i] = true;
+
+		if(AdaptFCEnable) {
+			for(int j=0; j<VehNum; j++) {
+				if(FCGotCurr[j]) {
+					CurrDirectionNew += atan2(CurrentState[j].twist.linear.y, CurrentState[j].twist.linear.x);
+					k++;
+				}
+			}
+			CurrDirectionNew = CurrDirectionNew/k;
+
+			if(abs(CurrDirection - CurrDirectionNew) > deltaPhi && CurrDirectionNew != 0.0){
+
+				CurrDirection = CurrDirectionNew;
+
+				FormationUpdate(CurrDirection);
+			}
+		}
+	}
+
+
+	void FormationUpdate(const double angle) {
+
+		FormReq.FormX = FormLineX;
+		FormReq.FormY = FormLineY;
+		FormReq.FormYaw = 180*angle/3.1415;
+		FormReq.enableParam[0] = true;
+		FormReq.enableParam[1] = true;
+
+		FormationNH.publish(FormReq);
+
+	}
+
+	void EnableController(const std_msgs::Bool::ConstPtr& enable) {
+
+		ROS_INFO("ENABLED!!!!!\n\n\n");
+		AdaptFCEnable = enable->data;
+		CurrDirection = 0.0;
 
 	}
 
 
-	void FormationUpdate() {
-
-
-
-	}
 
 private:
 
-	ros::Subscriber *CurrentHandle;
-	ros::Subscriber *StateNode;
+	ros::Subscriber *CurrentNH;
+	//ros::Subscriber *StateNH;
+	ros::Subscriber AdaptFCEnableNH;
+	ros::Publisher FormationNH;
 
 	geometry_msgs::TwistStamped *CurrentState;
-	auv_msgs::NavSts *VehState;
+	//auv_msgs::NavSts *VehState;
+	formation_control::Formation FormReq;
+
+	double deltaPhi, FormDist;
+	double CurrDirection;
 
 	int VehNum;
 
+	bool *FCGotCurr, AdaptFCEnable;
+
 	std::vector<std::string> ParentNS;
+
+	std::vector<double> FormLineX, FormLineY;
 
 };
 
