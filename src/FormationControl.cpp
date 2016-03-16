@@ -50,7 +50,6 @@ public:
 		nh.getParam("ParentNS", ParentNS);
 		nh.getParam("CurrentVeh", CurrentVeh);
 
-
 		/* subscribe to all vehicle states */
 		for(int i=0; i<VehNum; i++){
 //				ROS_INFO("i = %d\n", i);
@@ -82,6 +81,7 @@ public:
 
 
 //		ROS_INFO("PublisherNS = %s\n", (ParentNS[CurrentVeh]+"/nuRef").c_str());
+
 		initialize_controller();
 		ROS_INFO("\n\n\n\nControler init finished...\n\n\n\n");
 
@@ -374,9 +374,12 @@ public:
 		}
 		else {
 			en.request.enable = true;
-			ros::service::waitForService(ParentNS[CurrentVeh]+"/FormPos_Enable", 100000);
-			while(!EnableDP.call(en))
-				ROS_INFO("DYNAMIC POSITIONING NOT STARTED");
+			if(ros::service::waitForService(ParentNS[CurrentVeh]+"/FormPos_Enable", 10000))
+				EnableDP.call(en);
+			else {
+				ROS_INFO("EXTERNAL DYNAMIC POSITIONING NOT STARTED");
+				UseExtCon = false;
+			}
 		}
 		nh.param("UseImedStart",UseImedStart, false);
 		nh.param("MaxSpeed",MaxSpeed, 1.0);
@@ -410,10 +413,8 @@ public:
 		req.request.desired_mode[4] = -1;
 		req.request.desired_mode[5] = -1;
 
-		ros::service::waitForService(ParentNS[CurrentVeh]+"/ConfigureVelocityController", 100000);
-		while(!ConfVelCon.call(req))
-			ROS_INFO("VELOCITY CONTROLLER NOT CONFIGURED\n");
-
+		ros::service::waitForService(ParentNS[CurrentVeh]+"/ConfigureVelocityController", -1);
+		ConfVelCon.call(req);
 	}
 
 private:

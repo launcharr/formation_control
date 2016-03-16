@@ -3,7 +3,7 @@ FormLineX: [0,1,2,-1,0,1,-2,-1,0]
 FormLineY: [0,0,0,0,0,0,0,0,0]
 
 # desired distance between vehicles
-FormDist: 1.3
+FormDist: 1.6
 
 # current activity threshold
 deltaPhi: 0.1

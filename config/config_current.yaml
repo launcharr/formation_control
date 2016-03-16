@@ -5,4 +5,4 @@ desCurrBear: 1.57
 # cone function parameters
 coneDist: 4.0, 
 coneWidth: 1.0 
-coneMinMul: 0.7
+coneMinMul: 0.85
