@@ -1,0 +1,8 @@
+# desired current speed and bearing
+desCurrSpeed: 0.5
+desCurrBear: 1.57
+
+# cone function parameters
+coneDist: 4.0, 
+coneWidth: 1.0 
+coneMinMul: 0.7

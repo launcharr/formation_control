@@ -4,8 +4,6 @@
 #include <fstream>
 #include <math.h>
 
-#include <auv_msgs/BodyVelocityReq.h>
-#include <auv_msgs/BodyForceReq.h>
 #include <auv_msgs/NavSts.h>
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/TwistStamped.h>
@@ -44,7 +42,11 @@ public:
 	void init() {
 		ros::NodeHandle nh;
 
-		ROS_INFO("INIT START!!!!!\n\n\n");
+		nh.param("desCurrSpeed",desCurrSpeed, 0.5);
+		nh.param("desCurrBear",desCurrBear, 0.0);
+		nh.param("coneDist", coneDist, 4.0);
+		nh.param("coneWidth", coneWidth, 1.0);
+		nh.param("coneMinMul", coneMinMul, 0.9);
 
 		if (ros::param::has("ParentNS")) {
 
@@ -54,16 +56,11 @@ public:
 
 				FCGotState[i] = false;
 
-				ROS_INFO("\n\ni = %d!!!!!\n\n\n", i);
-
 				StateNH[i] = nh.subscribe<auv_msgs::NavSts>(ParentNS[i]+"/stateHat",1,boost::bind(&CurrentNode::onEstimate, this, _1, i));
 
 				CurrentNH[i] = nh.advertise<geometry_msgs::TwistStamped>(ParentNS[i]+"/currents",2);
 			}
 		}
-
-
-		ROS_INFO("INIT END!!!!!\n\n\n");
 	}
 
 	void onEstimate(const auv_msgs::NavSts::ConstPtr& state, const int& i) {
@@ -118,8 +115,9 @@ public:
 
 		std::vector<double> curr(2);
 
-		curr[0] = -0.2;
-		curr[1] = -0.2;
+
+		curr[0] = desCurrSpeed*cos(desCurrBear);
+		curr[1] = desCurrSpeed*sin(desCurrBear);
 
 		return curr;
 
@@ -134,10 +132,13 @@ public:
 		ROS_INFO("\nRV = [%f, %f]\n",Vir[0] - Vc[0], Vir[1] - Vc[1]);
 
 		// if is inside quadratic function
-		if( Vir[0] - Vc[0] < -4*(pow((Vir[1] - Vc[1]),2) - 1) && Vir[0] - Vc[0] > 0){
+		if( Vir[0] - Vc[0] < -coneDist*(pow((Vir[1] - Vc[1]),2) - pow(coneWidth,2)) && Vir[0] - Vc[0] > 0){
 
-			currMul[0] = 0.9;
-			currMul[1] = 0.9;
+			// z = 0.1*y^2 + 0.1x + 0.9
+			// kvadratna funkcija po z=1 osi, i x = [0,4]
+			currMul[0] = (1 - coneMinMul)*pow((Vir[1] - Vc[1]),2) + coneMinMul
+					+ (1 - coneMinMul)*(Vir[0] - Vc[0])/coneDist;
+			currMul[1] = currMul[0];
 		}
 		else {
 			currMul[0] = 1.0;
@@ -172,6 +173,7 @@ private:
 	ros::Publisher *CurrentNH;
 	ros::Subscriber *StateNH;
 
+
 	geometry_msgs::TwistStamped CurrentState;
 	auv_msgs::NavSts *VehState;
 	bool *FCGotState;
@@ -180,6 +182,8 @@ private:
 	int VehNum;
 
 	std::vector<std::string> ParentNS;
+	double desCurrSpeed, desCurrBear;
+	double coneDist, coneWidth, coneMinMul;
 
 
 };
@@ -188,11 +192,8 @@ int main(int argc, char **argv) {
 
 	ros::init(argc, argv, "current_node");
 
-	ROS_INFO("\n\nSTART!!!!!\n\n\n");
-
 	CurrentNode currStart;
 
-	ROS_INFO("\n\nSPIN!!!!!\n\n\n");
 	ros::spin();
 
 	return 0;

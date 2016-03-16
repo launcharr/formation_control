@@ -13,7 +13,7 @@ Ts: 0.7
 MaxSpeed: 1.0
 
 # use external DP controller
-UseExtCon: False
+UseExtCon: True
 UseImedStart: False
 kdp: 0.5
 

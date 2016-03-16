@@ -4,12 +4,9 @@
 #include <fstream>
 #include <math.h>
 
-#include <auv_msgs/BodyVelocityReq.h>
-#include <auv_msgs/BodyForceReq.h>
+
 #include <auv_msgs/NavSts.h>
 #include <std_msgs/Bool.h>
-#include <navcon_msgs/ConfigureVelocityController.h>
-#include <navcon_msgs/EnableControl.h>
 #include <formation_control/Formation.h>
 #include <geometry_msgs/TwistStamped.h>
 
@@ -58,9 +55,15 @@ class CurrAdapControl {
 		nh.getParam("ParentNS", ParentNS);
 		nh.getParam("FormLineX", FormLineX);
 		nh.getParam("FormLineY", FormLineY);
-		nh.param("FromDist", FormDist, 1.0);
+		nh.param("FormDist", FormDist, 1.0);
 		nh.param("deltaPhi", deltaPhi, 0.05);
 
+		for(int j=0; j < VehNum; j++) {
+			for(int k=0; k < VehNum; k++) {
+				FormLineX[j*VehNum + k] *= FormDist;
+				FormLineY[j*VehNum + k] *= FormDist;
+			}
+		}
 
 		for(int i=0; i<VehNum; i++){
 

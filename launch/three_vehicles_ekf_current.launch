@@ -283,8 +283,7 @@
  	
  	<group ns="vehicle1">
  		
-		
- 			 		
+ 		// formation control	
  		<rosparam command="load" file="$(find formation_control)/config/config.yaml" /> 			
 	  	<rosparam param="CurrentVeh">0</rosparam>
 	  	<rosparam param="ParentNS">[/vehicle1,/vehicle2,/vehicle3]</rosparam>
@@ -293,12 +292,23 @@
 	  		  name="formation_control"
 	  		  type="FormationControl">
 		</node>
+		
+		// external DP controller
+		<node pkg="labust_control"
+			  name="FormPosController"
+ 			  type="fadp_controller2">
+			<remap from="Enable" to="FormPos_Enable" />
+			<remap from="windup" to="tauAch"/>			
+			<remap from="ref" to="PosRef"/>
+			<remap from="out" to="FormVel"/>
+			<remap from="state" to="stateHat"/>		 
+		</node>
 				
  	</group>
+ 	
  	<group ns="vehicle2">
  		
-
- 		
+ 		// formation control
  		<rosparam command="load" file="$(find formation_control)/config/config.yaml" /> 			
 	  	<rosparam param="CurrentVeh">1</rosparam>
 	  	<rosparam param="ParentNS">[/vehicle1,/vehicle2,/vehicle3]</rosparam>
@@ -308,10 +318,22 @@
 	  		  type="FormationControl">
 		</node>
 		
+		// external DP controller
+		<node pkg="labust_control"
+			  name="FormPosController"
+ 			  type="fadp_controller2">
+			<remap from="Enable" to="FormPos_Enable" />
+			<remap from="windup" to="tauAch"/>			
+			<remap from="ref" to="PosRef"/>
+			<remap from="out" to="FormVel"/>
+			<remap from="state" to="stateHat"/>		 
+		</node>
+		
  	</group>
+ 	
  	<group ns="vehicle3"> 		
  		
- 		
+ 		// formation control
  		<rosparam command="load" file="$(find formation_control)/config/config.yaml" /> 			
 	  	<rosparam param="CurrentVeh">2</rosparam>
 	  	<rosparam param="ParentNS">[/vehicle1,/vehicle2,/vehicle3]</rosparam>
@@ -321,12 +343,26 @@
 	  		  type="FormationControl">
 		</node>	
 		
+		// external DP controller
+		<node pkg="labust_control"
+			  name="FormPosController"
+ 			  type="fadp_controller2">
+			<remap from="Enable" to="FormPos_Enable" />
+			<remap from="windup" to="tauAch"/>			
+			<remap from="ref" to="PosRef"/>
+			<remap from="out" to="FormVel"/>
+			<remap from="state" to="stateHat"/>		 
+		</node>
+		
+		// artificial current generation
+		<rosparam command="load" file="$(find formation_control)/config/config_current.yaml" />
 		 <node pkg="formation_control"
  		  name="current_estim"
  		  type="current_node"
 		  output="screen">
  		</node>
  		
+ 		// adaptive FC in current bearing
  		<rosparam command="load" file="$(find formation_control)/config/config_line_form.yaml" />
 		<node pkg="formation_control"
  		  name="current_adapt"
