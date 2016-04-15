@@ -132,12 +132,13 @@ public:
 		ROS_INFO("\nRV = [%f, %f]\n",Vir[0] - Vc[0], Vir[1] - Vc[1]);
 
 		// if is inside quadratic function
-		if( Vir[0] - Vc[0] < -coneDist*(pow((Vir[1] - Vc[1]),2) - pow(coneWidth,2)) && Vir[0] - Vc[0] > 0){
+		// ()
+		if( Vir[0] - Vc[0] < -coneDist*(pow((Vir[1] - Vc[1]),2) / pow(coneWidth/2,2) - 1) && Vir[0] - Vc[0] > 0){
 
 			// z = 0.1*y^2 + 0.1x + 0.9
 			// kvadratna funkcija po z=1 osi, i x = [0,4]
-			currMul[0] = (1 - coneMinMul)*pow((Vir[1] - Vc[1]),2) + coneMinMul
-					+ (1 - coneMinMul)*(Vir[0] - Vc[0])/coneDist;
+			currMul[0] = (1 - coneMinMul)/pow(coneWidth/2,2)*pow((Vir[1] - Vc[1]),2)
+					+ coneMinMul + (1 - coneMinMul)*(Vir[0] - Vc[0])/coneDist;
 			currMul[1] = currMul[0];
 		}
 		else {
