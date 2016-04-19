@@ -77,7 +77,7 @@ public:
 		EnableDP = nhSub.serviceClient<navcon_msgs::EnableControl>(ParentNS[CurrentVeh]+"/FormPos_Enable");
 
 		/* formation change topic */
-		FormChange = nh.subscribe<formation_control::Formation>("/FormChange", 1, &FormControl::formationChange, this);
+		FormChange = nh.subscribe<formation_control::Formation>("/FormChange", 1, &FormControl::onFormationChange, this);
 
 
 //		ROS_INFO("PublisherNS = %s\n", (ParentNS[CurrentVeh]+"/nuRef").c_str());
@@ -264,7 +264,7 @@ public:
 		}
 	}
 
-	void formationChange(const formation_control::Formation::ConstPtr& form) {
+	void onFormationChange(const formation_control::Formation::ConstPtr& form) {
 
 		if(form->enableParam[0]) {
 			/*change formation*/

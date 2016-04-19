@@ -93,7 +93,7 @@ class CurrAdapControl {
 			}
 			CurrDirectionNew = CurrDirectionNew/k;
 
-			if(abs(CurrDirection - CurrDirectionNew) > deltaPhi && CurrDirectionNew != 0.0){
+			if(abs(CurrDirection - CurrDirectionNew) > deltaPhi){
 
 				CurrDirection = CurrDirectionNew;
 

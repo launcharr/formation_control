@@ -35,12 +35,29 @@ enableParam:
 	pause enter
 }
 
+function pub_curr() {
+rostopic pub /CurrChange formation_control/Current "CurrentSpeed: $1
+CurrentBearing: $2
+enableParam:
+- true
+- true" --once
+
+	pause enter
+}
+
 rostopic pub /FCEnable std_msgs/Bool true --once
 pause enter
+
+pub_curr 0.4 1.5705
 
 pub_pos 5 5
 
 rostopic pub /AdaptFCEnable std_msgs/Bool true --once
+pause enter
+
+pub_curr 0.4 0.7752
+
+pub_curr 0.4 0.0
 
 
 

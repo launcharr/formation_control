@@ -7,6 +7,7 @@
 #include <auv_msgs/NavSts.h>
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/TwistStamped.h>
+#include <formation_control/Current.h>
 
 
 class CurrentNode {
@@ -42,8 +43,8 @@ public:
 	void init() {
 		ros::NodeHandle nh;
 
-		nh.param("desCurrSpeed",desCurrSpeed, 0.5);
-		nh.param("desCurrBear",desCurrBear, 0.0);
+		desCurrSpeed = 0.0;
+		desCurrBear = 0.0;
 		nh.param("coneDist", coneDist, 4.0);
 		nh.param("coneWidth", coneWidth, 1.0);
 		nh.param("coneMinMul", coneMinMul, 0.9);
@@ -60,7 +61,10 @@ public:
 
 				CurrentNH[i] = nh.advertise<geometry_msgs::TwistStamped>(ParentNS[i]+"/currents",2);
 			}
+			/* formation change topic */
+			DesiredCurrentNH = nh.subscribe<formation_control::Current>("/CurrChange", 1, &CurrentNode::onCurrentChange, this);
 		}
+
 	}
 
 	void onEstimate(const auv_msgs::NavSts::ConstPtr& state, const int& i) {
@@ -109,6 +113,15 @@ public:
 				CurrentNH[j].publish(CurrentState);
 			}
 		}
+	}
+
+	void onCurrentChange (const formation_control::Current::ConstPtr& current) {
+
+		if(current->enableParam[0])
+			desCurrSpeed = current->CurrentSpeed;
+		if(current->enableParam[1])
+			desCurrBear = current->CurrentBearing;
+
 	}
 
 	std::vector<double> CurrentFnc(auv_msgs::NavSts state){
@@ -173,6 +186,7 @@ private:
 
 	ros::Publisher *CurrentNH;
 	ros::Subscriber *StateNH;
+	ros::Subscriber DesiredCurrentNH;
 
 
 	geometry_msgs::TwistStamped CurrentState;
