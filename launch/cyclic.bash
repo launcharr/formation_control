@@ -35,6 +35,17 @@ enableParam:
 	pause enter
 }
 
+function reset_form() {
+rostopic pub /FormChange formation_control/Formation "FormX: [0, 3, 1.5, -3, 0, -1.5, -1.5, 1.5, 0]
+FormY: [0, 0, 3, 0, 0, 3, -3, -3, 0]
+FormYaw: 0.0
+enableParam:
+- true
+- true" --once
+
+	pause enter
+}
+
 function pub_curr() {
 rostopic pub /CurrChange formation_control/Current "CurrentSpeed: $1
 CurrentBearing: $2
@@ -45,12 +56,12 @@ enableParam:
 	pause enter
 }
 
-rostopic pub /FCEnable std_msgs/Bool true --once
-pause enter
+rostopic pub /AdaptFCEnable std_msgs/Bool false --once
+pause adapt
+
+reset_form
 
 pub_curr 0.4 1.57075
-
-pub_pos 0 0
 
 rostopic pub /AdaptFCEnable std_msgs/Bool true --once
 pause enter
@@ -58,8 +69,4 @@ pause enter
 pub_curr 0.4 0.7853
 
 pub_curr 0.4 0.0
-
-
-
-
 

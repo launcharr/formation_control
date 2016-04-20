@@ -6,4 +6,4 @@ FormLineY: [0,0,0,0,0,0,0,0,0]
 FormDist: 1.6
 
 # current activity threshold
-deltaPhi: 0.1
+deltaPhi: 0.001
