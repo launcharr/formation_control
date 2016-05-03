@@ -32,6 +32,7 @@ public:
 			FCGotState = new bool[VehNum];
 			VehState = new auv_msgs::NavSts[VehNum];
 			StateNode = new ros::Subscriber[VehNum];
+			StateTime = new ros::Time[VehNum];
 			init();
 		}
 	}
@@ -40,6 +41,7 @@ public:
 		delete [] FCGotState;
 		delete [] VehState;
 		delete [] StateNode;
+		delete [] StateTime;
 	}
 
 	void init() {
@@ -95,6 +97,14 @@ public:
 		VehState[i] = *state;
 		FCGotState[i] = true;
 
+		/* if state of the vehicle didn't came in last 2 seconds, disable controller for his measurements */
+		for(int j=0; j<VehNum; j++) {
+			if(ros::Time::now().sec - StateTime[j].sec > 2.0) {
+				FCGotState[j] = false;
+			}
+		}
+
+		/* if controller is started and you have all necessary info, start the controller */
 		if(FCGotState[CurrentVeh] && FCEnable) {
 			ControlLaw();
 		}
@@ -393,8 +403,10 @@ public:
 		}
 
 //		nh.param("nu_manual/maximum_speeds",MaxSpeed, {0.05,0.05,0.05,0,0,0.5});
-		for(int i=0; i<VehNum;i++)
+		for(int i=0; i<VehNum;i++) {
 			FCGotState[i] = false;
+			StateTime[i] = ros::Time::now();
+		}
 		FCStart = false;
 		DPStart = false;
 
@@ -426,6 +438,7 @@ private:
 	ros::Subscriber FormPosRef, VelRef;
 	ros::Publisher VehPosRef;
 	ros::ServiceClient EnableDP;
+	ros::Time *StateTime;
 
 	auv_msgs::NavSts *VehState;
 	auv_msgs::BodyVelocityReq VelConReq;
