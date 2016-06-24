@@ -59,10 +59,10 @@
 		<z>1.57079633</z>
 		</offsetr>
 		<enablePhysics> 1 </enablePhysics>
-		<showTrajectory>
+		<!-- <showTrajectory>
 			<target>pladypos2/base_link</target>
-		</showTrajectory>
-	</simParams>
+		</showTrajectory> -->	
+		</simParams>
 
 	
 	<camera>

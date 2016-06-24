@@ -32,6 +32,7 @@ public:
 			FCGotState = new bool[VehNum];
 			VehState = new auv_msgs::NavSts[VehNum];
 			StateNode = new ros::Subscriber[VehNum];
+			StateTime = new ros::Time[VehNum];
 			init();
 		}
 	}
@@ -40,6 +41,7 @@ public:
 		delete [] FCGotState;
 		delete [] VehState;
 		delete [] StateNode;
+		delete [] StateTime;
 	}
 
 	void init() {
@@ -49,7 +51,6 @@ public:
 
 		nh.getParam("ParentNS", ParentNS);
 		nh.getParam("CurrentVeh", CurrentVeh);
-
 
 		/* subscribe to all vehicle states */
 		for(int i=0; i<VehNum; i++){
@@ -78,10 +79,11 @@ public:
 		EnableDP = nhSub.serviceClient<navcon_msgs::EnableControl>(ParentNS[CurrentVeh]+"/FormPos_Enable");
 
 		/* formation change topic */
-		FormChange = nh.subscribe<formation_control::Formation>("/FormChange", 1, &FormControl::formationChange, this);
+		FormChange = nh.subscribe<formation_control::Formation>("/FormChange", 1, &FormControl::onFormationChange, this);
 
 
 //		ROS_INFO("PublisherNS = %s\n", (ParentNS[CurrentVeh]+"/nuRef").c_str());
+
 		initialize_controller();
 		ROS_INFO("\n\n\n\nControler init finished...\n\n\n\n");
 
@@ -95,6 +97,14 @@ public:
 		VehState[i] = *state;
 		FCGotState[i] = true;
 
+		/* if state of the vehicle didn't came in last 2 seconds, disable controller for his measurements */
+		for(int j=0; j<VehNum; j++) {
+			if(ros::Time::now().sec - StateTime[j].sec > 2.0) {
+				FCGotState[j] = false;
+			}
+		}
+
+		/* if controller is started and you have all necessary info, start the controller */
 		if(FCGotState[CurrentVeh] && FCEnable) {
 			ControlLaw();
 		}
@@ -264,7 +274,7 @@ public:
 		}
 	}
 
-	void formationChange(const formation_control::Formation::ConstPtr& form) {
+	void onFormationChange(const formation_control::Formation::ConstPtr& form) {
 
 		if(form->enableParam[0]) {
 			/*change formation*/
@@ -374,9 +384,12 @@ public:
 		}
 		else {
 			en.request.enable = true;
-			ros::service::waitForService(ParentNS[CurrentVeh]+"/FormPos_Enable", 100000);
-			while(!EnableDP.call(en))
-				ROS_INFO("DYNAMIC POSITIONING NOT STARTED");
+			if(ros::service::waitForService(ParentNS[CurrentVeh]+"/FormPos_Enable", 10000))
+				EnableDP.call(en);
+			else {
+				ROS_INFO("EXTERNAL DYNAMIC POSITIONING NOT STARTED");
+				UseExtCon = false;
+			}
 		}
 		nh.param("UseImedStart",UseImedStart, false);
 		nh.param("MaxSpeed",MaxSpeed, 1.0);
@@ -390,8 +403,10 @@ public:
 		}
 
 //		nh.param("nu_manual/maximum_speeds",MaxSpeed, {0.05,0.05,0.05,0,0,0.5});
-		for(int i=0; i<VehNum;i++)
+		for(int i=0; i<VehNum;i++) {
 			FCGotState[i] = false;
+			StateTime[i] = ros::Time::now();
+		}
 		FCStart = false;
 		DPStart = false;
 
@@ -410,10 +425,8 @@ public:
 		req.request.desired_mode[4] = -1;
 		req.request.desired_mode[5] = -1;
 
-		ros::service::waitForService(ParentNS[CurrentVeh]+"/ConfigureVelocityController", 100000);
-		while(!ConfVelCon.call(req))
-			ROS_INFO("VELOCITY CONTROLLER NOT CONFIGURED\n");
-
+		ros::service::waitForService(ParentNS[CurrentVeh]+"/ConfigureVelocityController", -1);
+		ConfVelCon.call(req);
 	}
 
 private:
@@ -425,6 +438,7 @@ private:
 	ros::Subscriber FormPosRef, VelRef;
 	ros::Publisher VehPosRef;
 	ros::ServiceClient EnableDP;
+	ros::Time *StateTime;
 
 	auv_msgs::NavSts *VehState;
 	auv_msgs::BodyVelocityReq VelConReq;

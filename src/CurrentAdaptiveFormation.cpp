@@ -56,7 +56,7 @@ class CurrAdapControl {
 		nh.getParam("FormLineX", FormLineX);
 		nh.getParam("FormLineY", FormLineY);
 		nh.param("FormDist", FormDist, 1.0);
-		nh.param("deltaPhi", deltaPhi, 0.05);
+		nh.param("deltaPhi", deltaPhi, 0.0005);
 
 		for(int j=0; j < VehNum; j++) {
 			for(int k=0; k < VehNum; k++) {
@@ -81,6 +81,8 @@ class CurrAdapControl {
 		int k = 0;
 		double CurrDirectionNew = 0.0;
 
+		ROS_INFO("\nGot current estimation %.3f.\n", curr->twist.linear.x);
+
 		CurrentState[i] = *curr;
 		FCGotCurr[i] = true;
 
@@ -93,12 +95,12 @@ class CurrAdapControl {
 			}
 			CurrDirectionNew = CurrDirectionNew/k;
 
-			if(abs(CurrDirection - CurrDirectionNew) > deltaPhi && CurrDirectionNew != 0.0){
+			//if(abs(CurrDirection - CurrDirectionNew) > deltaPhi){
 
 				CurrDirection = CurrDirectionNew;
 
 				FormationUpdate(CurrDirection);
-			}
+			//}
 		}
 	}
 
