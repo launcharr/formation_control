@@ -378,6 +378,6 @@
         	name="uwsim" 
         	type="uwsim" 
         	args="--configfile $(find formation_control)/scenes/test_environment_moje.xml
-  			--dataPath  $(find labust_uwsim)/urdf/caddy/">				
+  			--dataPath  $(find labust_uwsim)/urdf/caddy/">	
   	</node>
 </launch>

@@ -147,11 +147,11 @@ public:
 					RplFrcX = RplFrcX + (kf/pow(rij,2) + kd)*normalX;
 					RplFrcY = RplFrcY + (kf/pow(rij,2) + kd)*normalY;
 					// add aditional force for vehicle passing
-					frcX = RplFrcX;
+					/* frcX = RplFrcX;
 					frcY = RplFrcY;
 					rotateVector(frcX,frcY, 1.57);
 					RplFrcX += 0.5*frcX;
-					RplFrcY += 0.5*frcY;
+					RplFrcY += 0.5*frcY; */
 
 				}
 //				ROS_INFO("FORCE X = %f Y = %f\n",RplFrcX,RplFrcY);
