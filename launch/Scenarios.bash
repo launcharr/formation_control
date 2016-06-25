@@ -51,16 +51,17 @@ function print_help() {
     echo "h - help";
     echo "fc_en - Enable formation control";
     echo "fc_dis - Disable formation control";
-    
+    echo "chg_pos - Change formation position";
+    echo "chg_form - Change formation";
     echo "s1 - Start scenario 1";
     echo "s2 - Start scenario 2";
     echo "s3 - Start scenario 3";
     echo "s4 - Start scenario 4";
 }
-
+i=0;
 while [ true ];
     do read -p "Enter command: " cmd
-    
+    i=i+1;
     case $cmd in
         h) 
             print_help
@@ -96,15 +97,39 @@ while [ true ];
                 
         s1)
             echo "Scenario 1 starting.";
+            rosbag record /vehicle1/stateHat /vehicle2/stateHat /vehicle3/stateHat -o Scenario1 & 
+            pid=$(echo $!)
+            
+            
+            pause enter
+            pkill -INT -P $pid
             ;;
         s2)
             echo "Scenario 2 starting.";
+            rosbag record /vehicle1/stateHat /vehicle2/stateHat /vehicle3/stateHat -o Scenario2 &
+            pid=$(echo $!)
+            
+            
+            pause enter
+            pkill -INT -P $pid
             ;;
         s3)
             echo "Scenario 3 starting.";
+            rosbag record /vehicle1/stateHat /vehicle2/stateHat /vehicle3/stateHat -o Scenario3 &
+            pid=$(echo $!)
+            
+            
+            pause enter
+            pkill -INT -P $pid
             ;;
         s4)
             echo "Scenario 4 starting.";
+            rosbag record /vehicle1/stateHat /vehicle2/stateHat /vehicle3/stateHat -o Scenario4 &
+            pid=$(echo $!)
+            
+            
+            pause enter
+            pkill -INT -P $pid
             ;;
         exit) 
             echo "Exiting.";
