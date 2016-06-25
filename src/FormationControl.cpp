@@ -96,6 +96,7 @@ public:
 		/* extract necessary info */
 		VehState[i] = *state;
 		FCGotState[i] = true;
+		StateTime[i].sec = ros::Time::now().sec;
 
 		/* if state of the vehicle didn't came in last 2 seconds, disable controller for his measurements */
 		for(int j=0; j<VehNum; j++) {
@@ -103,10 +104,11 @@ public:
 				FCGotState[j] = false;
 			}
 		}
-
+        
 		/* if controller is started and you have all necessary info, start the controller */
 		if(FCGotState[CurrentVeh] && FCEnable) {
 			ControlLaw();
+			//ROS_INFO("\nEstimate");
 		}
 	}
 
@@ -141,8 +143,8 @@ public:
 				Vxi = VehState[i].body_velocity.x;
 				Vyi = VehState[i].body_velocity.y;
 
-				ROS_INFO("Pogreska po X %d = %f\n", i,XCurr - Xi + FX);
-				ROS_INFO("Pogreska po Y %d = %f\n", i,YCurr - Yi + FY);
+				//ROS_INFO("Pogreska po X %d = %f\n", i,XCurr - Xi + FX);
+				//ROS_INFO("Pogreska po Y %d = %f\n", i,YCurr - Yi + FY);
 
 				/* consensus control*/
 				VelConReq.twist.linear.x = VelConReq.twist.linear.x - DG*G*(XCurr - Xi + FX);
@@ -168,7 +170,7 @@ public:
 
 			}
 		}
-
+        //ROS_INFO("Vel cons = %f, %f\n", VelConReq.twist.linear.x, VelConReq.twist.linear.y);
 		/* saturate before adding force*/
 		saturateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, MaxSpeed);
 
@@ -186,8 +188,8 @@ public:
 			// internal DP controller
 			FormVelX = -kdp*(XCurr - FormPosX);
 			FormVelY = -kdp*(YCurr - FormPosY);
-			ROS_INFO("FormPos = %f, %f\n", FormPosX, FormPosY);
-			ROS_INFO("PosCurr = %f, %f\n", XCurr, YCurr);
+			//ROS_INFO("FormPos = %f, %f\n", FormPosX, FormPosY);
+			//ROS_INFO("PosCurr = %f, %f\n", XCurr, YCurr);
 			rotateVector(FormVelX, FormVelY, - YawCurr - Ts*YawRateCurr);
 		}
 
@@ -198,7 +200,7 @@ public:
 		/* saturate requested speeds */
 		saturateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, MaxSpeed);
 
-		ROS_INFO("Vel = %f, %f\n", VelConReq.twist.linear.x, VelConReq.twist.linear.y);
+		//ROS_INFO("Vel = %f, %f\n", VelConReq.twist.linear.x, VelConReq.twist.linear.y);
 
 		/* disable axis*/
 		VelConReq.disable_axis.z = true;
@@ -208,7 +210,7 @@ public:
 		VelConReq.header.stamp = ros::Time::now();
 		/* publish requested velocity */
 		VelConNode.publish(VelConReq);
-//		ROS_INFO("\n\n\nKraj publishanja zeljene brzine\n\n\n");
+		//ROS_INFO("\n\n\nKraj publishanja zeljene brzine\n\n\n");
 
 	}
 
@@ -232,6 +234,8 @@ public:
 		/* formation center position reference*/
 		PosRef = *ref;
 
+		DPStart = true;
+
 		if(UseExtCon) {
 
 			ROS_INFO("FormPosExt = %f, %f\n", PosRef.position.north, FormPosY = PosRef.position.east);
@@ -245,13 +249,13 @@ public:
 
 			ControllerRef.header.stamp = ros::Time::now();
 			VehPosRef.publish(ControllerRef);
+
 		}
 		else {
 			FormPosX = PosRef.position.north;
 			FormPosY = PosRef.position.east;
 			ROS_INFO("FormPos2 = %f, %f\n", PosRef.position.north, FormPosY = PosRef.position.east);
 			addFormCentre(FormPosX, FormPosY);
-			DPStart = true;
 			ROS_INFO("FormPos2 = %f, %f\n", FormPosX, FormPosY);
 		}
 
@@ -281,6 +285,7 @@ public:
 			for(int i=0; i<VehNum*VehNum; i++) {
 				FormX[i] = form->FormX[i];
 				FormY[i] = form->FormY[i];
+				ROS_INFO("FormX[%d] = %f, FormY[i] = %f",i,FormX[i],i,FormY[i]);
 			}
 		}
 
@@ -289,13 +294,13 @@ public:
 			rotateFormation(FormX, FormY, VehNum, 3.1415/180*form->FormYaw);
 		}
 
-		if(form->enableParam[0] || form->enableParam[1]) {
+		if( (form->enableParam[0] || form->enableParam[1]) && DPStart) {
 			/*Change position reference*/
 			if(UseExtCon) {
 				auv_msgs::NavSts ControllerRef = PosRef;
 
 				addFormCentre(ControllerRef.position.north, ControllerRef.position.east);
-
+                ROS_INFO("V2 pos ref = %f, %f\n", ControllerRef.position.north, ControllerRef.position.east);
 				VehPosRef.publish(ControllerRef);
 			}
 			else {
@@ -309,33 +314,19 @@ public:
 	}
 
 	void EnableController(const std_msgs::Bool::ConstPtr& enable) {
+	
+	    navcon_msgs::EnableControl en;
 		FCEnable = enable->data;
-
-		if (UseImedStart) {
-			/* start velocity controller when you enable control*/
-
-			if (UseExtCon) {
-				/* use external velocity controller*/
-				auv_msgs::NavSts ControllerRef = PosRef;
-
-				addFormCentre(ControllerRef.position.north, ControllerRef.position.east);
-
-		//		ROS_INFO("RefPos = %f, %f",ControllerRef.position.north, ControllerRef.position.east);
-
-				VehPosRef.publish(ControllerRef);
+        
+        if (UseExtCon) {
+            en.request.enable = enable->data;
+			if(ros::service::waitForService(ParentNS[CurrentVeh]+"/FormPos_Enable", 10000)) {
+				EnableDP.call(en);
+            }
+			if (!FCEnable) {
+				DPStart = false;
 			}
-			else {
-
-				FormPosX = PosRef.position.north;
-				FormPosY = PosRef.position.east;
-
-				addFormCentre(FormPosX, FormPosY);
-				DPStart = true;
-
-
-			}
-		}
-
+        }
 	}
 
 	inline void addFormCentre(double& refX, double& refY) {
@@ -391,7 +382,6 @@ public:
 				UseExtCon = false;
 			}
 		}
-		nh.param("UseImedStart",UseImedStart, false);
 		nh.param("MaxSpeed",MaxSpeed, 1.0);
 
 		nh.param("UseRepel",UseRepel, false);
@@ -451,7 +441,6 @@ private:
 	bool FCStart;
 	bool UseRepel;
 	bool UseExtCon;
-	bool UseImedStart;
 	bool *FCGotState;
 	bool DPStart;
 //	bool FCTempStart;

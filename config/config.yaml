@@ -14,7 +14,6 @@ MaxSpeed: 1.0
 
 # use external DP controller
 UseExtCon: True
-UseImedStart: False
 kdp: 0.5
 
 UseRepel: True
@@ -25,7 +24,7 @@ kd: 0.0
 # Force vector corr factor
 ni: 0.5
 # repel radius
-rf: 1.0
+rf: 1.6
 
 # Gain matrix
 GMat: [0, 0.1, 0.1, 0.1, 0, 0.1, 0.1, 0.1, 0]
