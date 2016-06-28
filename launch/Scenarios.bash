@@ -99,13 +99,11 @@ while [ true ];
             # scenarij krairanja formacije
             echo "Scenario 1 starting.";
             # pocni snimat bag
-            rosbag record /vehicle1/stateHat /vehicle2/stateHat /vehicle3/stateHat -o Scenario1 & 
+            rosbag record /vehicle1/stateHat /vehicle2/stateHat /vehicle3/stateHat /FCEnable /FormPosRef /FormChange -o Scenario1 & 
             pid=$(echo $!)
             # upali regulator
             FC_enable true;
             change_form [0,3,1.5,-3,0,-1.5,-1.5,1.5,0] [0,0,3,0,0,3,-3,-3,0] 0 true false
-            
-            
             pause enter
             # nakon kreiranja gasi rosbag i regulator
             pkill -INT -P $pid
@@ -119,14 +117,11 @@ while [ true ];
             change_form [0,3,1.5,-3,0,-1.5,-1.5,1.5,0] [0,0,3,0,0,3,-3,-3,0] 0 true false
             pause "Pocni snimat?";
             # pocni snimat bag
-            rosbag record /vehicle1/stateHat /vehicle2/stateHat /vehicle3/stateHat -o Scenario2 &
+            rosbag record /vehicle1/stateHat /vehicle2/stateHat /vehicle3/stateHat /FCEnable /FormPosRef /FormChange -o Scenario2 &
             pid=$(echo $!)
             # promijeni formaciju
-            change_form [0,2,4,-2,0,2,-4,-2,0] [0,2,4,-2,0,2,-4,-2,0] 0.0 true false
-            pause "Formacija 1 promjenjena?"
-            change_form [0,2,4,-2,0,2,-4,-2,0] [0,-3.46,0,3.46,0,3.46,0,-3.46,0] 0.0 true false
-            pause "Formacija 2 promjenjena?"
-            pause "Kraj?"
+            change_form [0,-4,-2,4,0,2,2,-2,0] [0,0,-3.46,0,0,-3.46,3.46,3.46,0] 0.0 true false
+            pause "Formacija promjenjena?"
             # nakon kreiranja gasi rosbag i regulator
             pkill -INT -P $pid
             FC_enable false;
@@ -139,15 +134,13 @@ while [ true ];
             change_pos 0 0;
             pause "Pocni snimat?";
             # pocni snimat bag
-            rosbag record /vehicle1/stateHat /vehicle2/stateHat /vehicle3/stateHat -o Scenario3 &
+            rosbag record /vehicle1/stateHat /vehicle2/stateHat /vehicle3/stateHat /FCEnable /FormPosRef /FormChange -o Scenario3 &
             pid=$(echo $!)
-            change_form [0,2,4,-2,0,2,-4,-2,0] [0,2,4,-2,0,2,-4,-2,0] 45.0 false true
-            pause "Rotacija 1 gotova? Next: Translacija 1!";
-            change_pos 3 3;
-            pause "Translacija 1 gotova? Next: Rotacija 2!";
-            change_form [0,2,4,-2,0,2,-4,-2,0] [0,2,4,-2,0,2,-4,-2,0] -80.0 false true
-            pause "Rotacija 2 gotova? Next: Translacija 2!";
-            change_pos -4 2;
+            change_form [0,2,4,-2,0,2,-4,-2,0] [0,2,4,-2,0,2,-4,-2,0] 80.0 false true
+            pause "Rotacija gotova? Next: Translacija 1!";
+            change_pos 6 6;
+            pause "Translacija 1 gotova? Next: Translacija 2! End!";
+            change_pos 4 -8;
             pause "Translacija 2 gotova? End!";
             # nakon kreiranja gasi rosbag i regulator
             pkill -INT -P $pid
@@ -157,7 +150,7 @@ while [ true ];
             # scenarij dinamickog pozicioniranja?
             echo "Scenario 4 starting.";
             # pocni snimat bag
-            rosbag record /vehicle1/stateHat /vehicle2/stateHat /vehicle3/stateHat -o Scenario4 &
+            rosbag record /vehicle1/stateHat /vehicle2/stateHat /vehicle3/stateHat /FCEnable /FormPosRef /FormChange -o Scenario4 &
             pid=$(echo $!)
             # upali regulator
             FC_enable true;
