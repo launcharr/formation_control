@@ -169,6 +169,13 @@ while [ true ];
             pause "Formation reset?"
             FC_enable false;
             ;;
+        ri)
+            echo "Reinitializing";
+            rosparam load $(rospack find formation_control)/config/config.yaml /vehicle1;
+            rosparam load $(rospack find formation_control)/config/config.yaml /vehicle2;
+            rosparam load $(rospack find formation_control)/config/config.yaml /vehicle3;
+            rostopic pub /FCReinit std_msgs/Bool true --once;
+            ;;
         exit) 
             echo "Exiting.";
             break;

@@ -24,6 +24,7 @@ public:
 		ros::NodeHandle nh;
 
 		ControlEnable = nh.subscribe<std_msgs::Bool>("/FCEnable", 2, &FormControl::EnableController, this);
+		ReinitControl = nh.subscribe<std_msgs::Bool>("/FCReinit", 2,&FormControl::onReinitializeController, this);
 
 		FCEnable = false;
 		nh.param("VehNum", VehNum, 0);
@@ -419,11 +420,34 @@ public:
 		ConfVelCon.call(req);
 	}
 
+	void onReinitializeController(const std_msgs::Bool::ConstPtr& enable) {
+		ros::NodeHandle nh;
+
+		if(enable->data) {
+			delete [] FCGotState;
+			delete [] VehState;
+			delete [] StateNode;
+			delete [] StateTime;
+
+			FCEnable = false;
+			nh.param("VehNum", VehNum, 0);
+
+			if(VehNum > 0) {
+				FCGotState = new bool[VehNum];
+				VehState = new auv_msgs::NavSts[VehNum];
+				StateNode = new ros::Subscriber[VehNum];
+				StateTime = new ros::Time[VehNum];
+				init();
+			}
+		}
+	}
+
 private:
 	ros::Subscriber *StateNode;
 	ros::Publisher VelConNode;
 	ros::ServiceClient ConfVelCon;
 	ros::Subscriber ControlEnable;
+	ros::Subscriber ReinitControl;
 	ros::Subscriber FormChange;
 	ros::Subscriber FormPosRef, VelRef;
 	ros::Publisher VehPosRef;
