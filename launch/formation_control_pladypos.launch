@@ -1,0 +1,40 @@
+<!--/*****************************************************************
+ * EXAMPLE.launch
+ *
+ *  Created on: Oct 30, 2014
+ *      Author: Filip Mandic
+ *
+ *****************************************************************/-->
+
+<launch>
+ 	<group ns="surface">
+ 		
+ 		<rosparam command="load" file="$(find formation_control)/config/config.yaml" /> 			
+	  	<rosparam param="CurrentVeh">2</rosparam>
+	  	<rosparam param="ParentNS">[/vehicle1,/vehicle2,/surface]</rosparam>
+		
+		// external DP controller
+		<node pkg="labust_control"
+			  name="FormPosController"
+ 			  type="fadp_controller2">
+			<remap from="Enable" to="FormPos_Enable" />
+			<remap from="windup" to="tauAch"/>			
+			<remap from="ref" to="PosRef"/>
+			<remap from="out" to="FormVel"/>
+			<remap from="state" to="position"/>		 
+		</node>
+		
+	  	<node pkg="formation_control"
+	  		  name="formation_control"
+	  		  type="FormationControl"
+	  		  output="screen">
+		</node>
+		
+		<node
+            pkg="labust_uwsim" 
+            type="navsts2odom.py" 
+            name="vehicle2uwsim">
+        </node>
+		
+ 	</group>
+</launch>

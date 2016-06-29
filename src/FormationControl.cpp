@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <math.h>
+#include <string.h>
 
 #include <auv_msgs/BodyVelocityReq.h>
 #include <auv_msgs/BodyForceReq.h>
@@ -47,7 +48,7 @@ public:
 
 	void init() {
 		ros::NodeHandle nh, nhSub, nhPub;
-
+		char surf[] = "/surface";
 		ROS_INFO("\n\n\n\nControler init...\n\n\n\n");
 
 		nh.getParam("ParentNS", ParentNS);
@@ -56,8 +57,15 @@ public:
 		/* subscribe to all vehicle states */
 		for(int i=0; i<VehNum; i++){
 //				ROS_INFO("i = %d\n", i);
-			StateNode[i] = nhSub.subscribe<auv_msgs::NavSts>(ParentNS[i]+"/stateHat",2,boost::bind(&FormControl::onEstimate, this, _1, i));
 
+			if(ParentNS[i] != "/surface") {
+				StateNode[i] = nhSub.subscribe<auv_msgs::NavSts>(ParentNS[i]+"/stateHat",2,boost::bind(&FormControl::onEstimate, this, _1, i));
+				ROS_INFO("\n\n\nVEHICLE\n\n\n");
+			}
+			else {
+				StateNode[i] = nhSub.subscribe<auv_msgs::NavSts>(ParentNS[i]+"/position",2,boost::bind(&FormControl::onEstimate, this, _1, i));
+				ROS_INFO("\n\n\nSURFACE\n\n\n");
+			}
 //			ROS_INFO("SubscriberNS = %s\n", (ParentNS[i]+"/stateHat").c_str());
 		}
 
