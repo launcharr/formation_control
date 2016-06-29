@@ -31,8 +31,8 @@
 		</node>
 		
 		<node
-            pkg="labust_uwsim" 
-            type="navsts2odom.py" 
+            pkg="labust_sim" 
+            type="navsts2odom" 
             name="vehicle2uwsim">
         </node>
 		

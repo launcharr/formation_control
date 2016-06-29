@@ -66,10 +66,10 @@ while [ true ];
         h) 
             print_help
             ;;
-        fc_en)
+        en)
             FC_enable true;
             ;;
-        fc_dis)
+        dis)
             FC_enable false;
             ;;
         chg_pos)
@@ -138,9 +138,9 @@ while [ true ];
             pid=$(echo $!)
             change_form [0,2,4,-2,0,2,-4,-2,0] [0,2,4,-2,0,2,-4,-2,0] 80.0 false true
             pause "Rotacija gotova? Next: Translacija 1!";
-            change_pos -15 15;
+            change_pos -6 6;
             pause "Translacija 1 gotova? Next: Translacija 2! End!";
-            change_pos -14 20;
+            change_pos 0 5;
             pause "Translacija 2 gotova? End!";
             # nakon kreiranja gasi rosbag i regulator
             pkill -INT -P $pid

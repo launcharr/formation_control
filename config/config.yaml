@@ -10,7 +10,7 @@ gamma: 0.1
 Ts: 0.7
 
 # max speed
-MaxSpeed: 1.0
+MaxSpeed: 0.5
 
 # use external DP controller
 UseExtCon: True
@@ -24,10 +24,10 @@ kd: 0.0
 # Force vector corr factor
 ni: 0.5
 # repel radius
-rf: 1.6
+rf: 2.0
 
 # Gain matrix
-GMat: [0, 0.1, 0.1, 0.1, 0, 0.1, 0.1, 0.1, 0]
+GMat: [0, 0.08, 0.08, 0.08, 0, 0.08, 0.08, 0.08, 0]
 
 # Formation distances matrix
 FormX: [0, 3, 1.5, -3, 0, -1.5, -1.5, 1.5, 0]

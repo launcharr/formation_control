@@ -182,6 +182,10 @@ public:
         //ROS_INFO("Vel cons = %f, %f\n", VelConReq.twist.linear.x, VelConReq.twist.linear.y);
 		/* saturate before adding force*/
 		saturateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, MaxSpeed);
+		if (sqrt( pow(VelConReq.twist.linear.x,2) + pow(VelConReq.twist.linear.y,2) < 0.1)) {
+		    VelConReq.twist.linear.x = 0;
+		    VelConReq.twist.linear.y = 0;
+	    }
 
 		// add repelling force and saturate
 		VelConReq.twist.linear.x += RplFrcX;
@@ -189,7 +193,7 @@ public:
 //		saturateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, MaxSpeedX);
 
 		/* rotate from NED to robot base coordinate system */
-		rotateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, -YawCurr - Ts*YawRateCurr);
+		rotateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, - YawCurr);
 
 
 		/* add dynamic position */
@@ -218,6 +222,7 @@ public:
 		VelConReq.disable_axis.yaw = true;
 		VelConReq.header.stamp = ros::Time::now();
 		/* publish requested velocity */
+
 		VelConNode.publish(VelConReq);
 		//ROS_INFO("\n\n\nKraj publishanja zeljene brzine\n\n\n");
 
@@ -294,7 +299,7 @@ public:
 			for(int i=0; i<VehNum*VehNum; i++) {
 				FormX[i] = form->FormX[i];
 				FormY[i] = form->FormY[i];
-				ROS_INFO("FormX[%d] = %f, FormY[i] = %f",i,FormX[i],i,FormY[i]);
+				ROS_INFO("FormX[%d] = %f, FormY[%d] = %f",i,FormX[i],i,FormY[i]);
 			}
 		}
 
