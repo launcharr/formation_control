@@ -17,6 +17,7 @@ add_message_files(
   FILES
   Formation.msg
   Current.msg
+  FormVehObj.msg
 )
 
 add_service_files(

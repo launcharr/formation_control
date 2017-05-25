@@ -1,165 +1,335 @@
-#include <ros/ros.h>
-#include <stdio.h>
-#include <iostream>
-#include <fstream>
-#include <math.h>
-#include <string.h>
+#include "../include/FormationControl.h"
 
-#include <auv_msgs/BodyVelocityReq.h>
-#include <auv_msgs/BodyForceReq.h>
-#include <auv_msgs/NavSts.h>
-#include <std_msgs/Bool.h>
-#include <navcon_msgs/ConfigureVelocityController.h>
-#include <navcon_msgs/EnableControl.h>
-#include <formation_control/Formation.h>
+using namespace labust::fcontrol;
 
-#define scaleX 1
-#define scaleY 1
+void FormControl::init(ros::NodeHandle nh, ros::NodeHandle ph) {
 
 
-class FormControl {
+	// initialize parameters
+	initParams(nh, ph);
 
-public:
+	/* publish velocity request */
+	velConNode = nh.advertise<auv_msgs::BodyVelocityReq>("nuRef", 1);
 
-	FormControl(){
-		ros::NodeHandle nh;
+	/* subscribe to formation position reference */
+	formPosRef = nh.subscribe<auv_msgs::NavSts>(mergeNS+"/FormPosRef", 2, &FormControl::onPosRef, this);
 
-		ControlEnable = nh.subscribe<std_msgs::Bool>("/FCEnable", 2, &FormControl::EnableController, this);
-		ReinitControl = nh.subscribe<std_msgs::Bool>("/FCReinit", 2,&FormControl::onReinitializeController, this);
+	/* formation change topic */
+	formChange = nh.subscribe<formation_control::Formation>(mergeNS+"/FormChange", 2, &FormControl::onFormationChange, this);
 
-		FCEnable = false;
-		nh.param("VehNum", VehNum, 0);
+	/* vehicle state node subscribe */
+	vehObj[0].stateSub = nh.subscribe<auv_msgs::NavSts>("position",2,boost::bind(&FormControl::onState, this, _1, vehObj[0].id));
+	//
+	vehObj[0].nsState = vehObj[0].stateSub.getTopic().c_str();
 
-		if(VehNum > 0) {
-			FCGotState = new bool[VehNum];
-			VehState = new auv_msgs::NavSts[VehNum];
-			StateNode = new ros::Subscriber[VehNum];
-			StateTime = new ros::Time[VehNum];
-			init();
+	controlEnable = nh.subscribe<std_msgs::Bool>("FCEnable", 2, &FormControl::onEnableController, this);
+
+	reinitControl = nh.subscribe<std_msgs::Bool>("FCReinit", 2, &FormControl::onReinitializeController, this);
+
+	// add myself in formation
+	formResizePub = nh.advertise<formation_control::FormVehObj>(mergeNS+"/FormResize",5);
+
+	// add others in my formation
+	formResizeSub = nh.subscribe<formation_control::FormVehObj>(mergeNS+"/FormResize",5, &FormControl::onFormationResize, this);
+
+	/* publish desired position to DP */
+	//vehPosRef = nh.advertise<auv_msgs::NavSts>("PosRef", 1);
+
+	/* subscribe to DP velocity */
+	//velRef = nh.subscribe<auv_msgs::BodyVelocityReq>("FormVel", 1, &FormControl::onControllerRef, this);
+
+	/* configure velocity controller service */
+	//confVelCon = nh.serviceClient<navcon_msgs::ConfigureVelocityController>("ConfigureVelocityController");
+
+	/* enable dynamic positioning service */
+	//enableDP = nh.serviceClient<navcon_msgs::EnableControl>("FormPos_Enable");
+
+	//	ROS_INFO("PublisherNS = %s\n", (ParentNS[CurrentVeh]+"/nuRef").c_str());
+
+	ROS_INFO("\n\n\n\nControler init finished...\n\n\n\n");
+
+}
+
+void FormControl::initParams(ros::NodeHandle nh, ros::NodeHandle ph) {
+
+	navcon_msgs::ConfigureVelocityController req;
+	navcon_msgs::EnableControl en;
+
+	// load common formation topic
+	ph.getParam("mergeNS",mergeNS);
+
+	// load vehicle id
+	ph.param("id", vehObj[0].id, vehObj[0].id);
+	vehObj[0].measValid = false;
+
+
+
+	ph.getParam("DGMat", DGMat);
+	ph.getParam("GMat", GMat);
+	ph.getParam("formX", formX);
+	ph.getParam("formY", formY);
+	ph.param("gamma",gamma, 0.1);
+	ph.param("Ts",Ts, 0.7);
+
+	ph.param("useExtCon",useExtCon, false);
+	if(!useExtCon){
+		ph.getParam("kdp",kdp);
+	}
+	else {
+		en.request.enable = true;
+		if(ros::service::waitForService("FormPos_Enable", 10000))
+			enableDP.call(en);
+		else {
+			ROS_INFO("EXTERNAL DYNAMIC POSITIONING NOT STARTED");
+			useExtCon = false;
+		}
+	}
+	ph.param("maxSpeed",maxSpeed, 1.0);
+
+	ph.param("useRepel",useRepel, false);
+	if(useRepel){
+		ph.getParam("kf",kf);
+		ph.getParam("kd",kd);
+		ph.param("ni",ni, 1.0);
+		ph.param("rf",rf, 2.0);
+	}
+
+//		nh.param("nu_manual/maximum_speeds",maxSpeed, {0.05,0.05,0.05,0,0,0.5});
+
+	FCStart = false;
+	DPStart = false;
+
+	formVelX = 0;
+	formVelY = 0;
+	formPosX = 0;
+	formPosY = 0;
+
+//		FCTempStart = false;
+
+	/* configure velocity controller for x, y axes */
+	req.request.desired_mode[0] = 2;
+	req.request.desired_mode[1] = 2;
+	req.request.desired_mode[2] = -1;
+	req.request.desired_mode[3] = -1;
+	req.request.desired_mode[4] = -1;
+	req.request.desired_mode[5] = -1;
+
+	ros::service::waitForService("ConfigureVelocityController", -1);
+	confVelCon.call(req);
+}
+
+void FormControl::onEnableController(const std_msgs::Bool::ConstPtr& enable) {
+
+	navcon_msgs::EnableControl en;
+	FCEnable = enable->data;
+	formation_control::FormVehObj formResizeReq;
+
+	ROS_INFO("Controler enable");
+
+	// populate request message
+	formResizeReq.header.stamp = ros::Time::now();
+	formResizeReq.id = vehObj[0].id;
+	formResizeReq.nsState = vehObj[0].nsState;
+
+	if (enable->data) {
+		// if enabling controller, advertise yourself to the formation
+		formResizeReq.insert = true;
+		for(int i=0;i<3;i++) {
+			formResizePub.publish(formResizeReq);
+		}
+	}
+	else {
+		// if disabling controller, delete yourself from the formation
+		formResizeReq.insert = false;
+		for(int i=0;i<3;i++) {
+			formResizePub.publish(formResizeReq);
 		}
 	}
 
-	~FormControl() {
-		delete [] FCGotState;
-		delete [] VehState;
-		delete [] StateNode;
-		delete [] StateTime;
+	if (useExtCon) {
+		en.request.enable = enable->data;
+		if(ros::service::waitForService("FormPos_Enable", 10000)) {
+			enableDP.call(en);
+		}
+		if (!FCEnable) {
+			DPStart = false;
+		}
 	}
+}
 
-	void init() {
-		ros::NodeHandle nh, nhSub, nhPub;
-		char surf[] = "/surface";
-		ROS_INFO("\n\n\n\nControler init...\n\n\n\n");
+void FormControl::onReinitializeController(const std_msgs::Bool::ConstPtr& enable) {
 
-		nh.getParam("ParentNS", ParentNS);
-		nh.getParam("CurrentVeh", CurrentVeh);
+	if(enable->data) {
 
-		/* subscribe to all vehicle states */
-		for(int i=0; i<VehNum; i++){
-//				ROS_INFO("i = %d\n", i);
+	}
+}
 
-			if(ParentNS[i] != "/surface") {
-				StateNode[i] = nhSub.subscribe<auv_msgs::NavSts>(ParentNS[i]+"/stateHat",2,boost::bind(&FormControl::onEstimate, this, _1, i));
-				ROS_INFO("\n\n\nVEHICLE\n\n\n");
+void FormControl::onFormationResize(const formation_control::FormVehObj::ConstPtr& veh) {
+
+	ros::NodeHandle nh;
+
+	if (veh->insert) {
+		/* for insertion check if vehicle is already in the formation
+		 * including vehicles with the same id as yours
+		 */
+		for (int i=0; i<vehObj.size();i++) {
+			if (vehObj[i].id == veh->id) {
+				// if yes, exit
+				return;
 			}
-			else {
-				StateNode[i] = nhSub.subscribe<auv_msgs::NavSts>(ParentNS[i]+"/position",2,boost::bind(&FormControl::onEstimate, this, _1, i));
-				ROS_INFO("\n\n\nSURFACE\n\n\n");
-			}
-//			ROS_INFO("SubscriberNS = %s\n", (ParentNS[i]+"/stateHat").c_str());
 		}
+		// if not, add it
+		VehicleObject tmpVeh(veh->nsState,
+							 veh->id,
+							 false,
+							 nh.subscribe<auv_msgs::NavSts>(veh->nsState,2,boost::bind(&FormControl::onState, this, _1, veh->id)));
+		vehObj.push_back(tmpVeh);
+		ROS_INFO("Added vehicle ID: %d",veh->id);
 
-		/* pusblish velocity request */
-		VelConNode = nhPub.advertise<auv_msgs::BodyVelocityReq>(ParentNS[CurrentVeh]+"/nuRef", 1);
+		// if new vehicle was added and i was in formation, advertise myself for robustness
+		if (FCEnable) {
+			// populate request message
+			formation_control::FormVehObj formResizeReq;
+			formResizeReq.header.stamp = ros::Time::now();
+			formResizeReq.id = vehObj[0].id;
+			formResizeReq.nsState = vehObj[0].nsState;
+			formResizeReq.insert = true;
 
-		/* publish desired position to DP */
-		VehPosRef = nhPub.advertise<auv_msgs::NavSts>(ParentNS[CurrentVeh]+"/PosRef", 1);
-
-		/* subscribe to DP velocity */
-		VelRef = nh.subscribe<auv_msgs::BodyVelocityReq>(ParentNS[CurrentVeh]+"/FormVel", 1, &FormControl::onControllerRef, this);
-
-		/* subscribe to formation position reference */
-		FormPosRef = nh.subscribe<auv_msgs::NavSts>("/FormPosRef", 1, &FormControl::onPosRef, this);
-
-		/* configure velocity controller service */
-		ConfVelCon = nhPub.serviceClient<navcon_msgs::ConfigureVelocityController>(ParentNS[CurrentVeh]+"/ConfigureVelocityController");
-
-		/* enable dynamic positioning service */
-		EnableDP = nhSub.serviceClient<navcon_msgs::EnableControl>(ParentNS[CurrentVeh]+"/FormPos_Enable");
-
-		/* formation change topic */
-		FormChange = nh.subscribe<formation_control::Formation>("/FormChange", 1, &FormControl::onFormationChange, this);
-
-
-//		ROS_INFO("PublisherNS = %s\n", (ParentNS[CurrentVeh]+"/nuRef").c_str());
-
-		initialize_controller();
-		ROS_INFO("\n\n\n\nControler init finished...\n\n\n\n");
-
+			formResizePub.publish(formResizeReq);
+		}
+	}
+	else {
+		/* for removal check if vehicle is already in the formation
+		 * excluding vehicle with the same id as yours
+		 */
+		for (int i=1; i<vehObj.size();i++) {
+			if (vehObj[i].id == veh->id) {
+				// if yes, remove it
+				vehObj.erase(vehObj.begin()+i);
+			}
+		}
+	}
+	ROS_INFO("Formation:");
+	for (int i=0; i<vehObj.size();i++) {
+		ROS_INFO("\tVeh ID: %d",vehObj[i].id);
 	}
 
-	void onEstimate(const auv_msgs::NavSts::ConstPtr& state, const int& i) {
+	return;
+}
 
-		ros::NodeHandle nh;
+void FormControl::onFormationChange(const formation_control::Formation::ConstPtr& form) {
 
-		/* extract necessary info */
-		VehState[i] = *state;
-		FCGotState[i] = true;
-		StateTime[i].sec = ros::Time::now().sec;
 
-		/* if state of the vehicle didn't came in last 2 seconds, disable controller for his measurements */
-		for(int j=0; j<VehNum; j++) {
-			if(ros::Time::now().sec - StateTime[j].sec > 2.0) {
-				FCGotState[j] = false;
-			}
-		}
-        
-		/* if controller is started and you have all necessary info, start the controller */
-		if(FCGotState[CurrentVeh] && FCEnable) {
-			ControlLaw();
-			//ROS_INFO("\nEstimate");
+	if(form->enableParam[0]) {
+		/*change formation*/
+		for(int i=0; i<vehNum*vehNum; i++) {
+			formX[i] = form->FormX[i];
+			formY[i] = form->FormY[i];
+			ROS_INFO("FormX[%d] = %f, FormY[%d] = %f",i,formX[i],i,formY[i]);
 		}
 	}
 
-	void ControlLaw() {
+	if(form->enableParam[1]) {
+		/*only rotate formation*/
+		rotateFormation(formX, formY, vehNum, 3.1415/180*form->FormYaw);
+	}
 
-		double XCurr, YCurr, Xi, Yi, VxCurr, VyCurr, Vxi, Vyi;
-		double G, FX, FY, YawCurr, YawRateCurr, yaw, speedX, speedY;
-		double normalX, normalY, rij, frcX, frcY;
-		int DG;
-		ros::NodeHandle nh;
-		YCurr = VehState[CurrentVeh].position.east;
-		XCurr = VehState[CurrentVeh].position.north;
-		VxCurr = VehState[CurrentVeh].body_velocity.x;
-		VyCurr = VehState[CurrentVeh].body_velocity.y;
-		YawCurr = VehState[CurrentVeh].orientation.yaw;
-		YawRateCurr = VehState[CurrentVeh].orientation_rate.yaw;
+	if( (form->enableParam[0] || form->enableParam[1]) && DPStart) {
+		/*Change position reference*/
+		if(useExtCon) {
+			auv_msgs::NavSts controllerRef = posRef;
 
-		RplFrcX = 0.0; // x
-		RplFrcY = 0.0; // y
+			addFormCentre(controllerRef.position.north, controllerRef.position.east);
+			ROS_INFO("V2 pos ref = %f, %f\n", controllerRef.position.north, controllerRef.position.east);
+			vehPosRef.publish(controllerRef);
+		}
+		else {
+			formPosX = posRef.position.north;
+			formPosY = posRef.position.east;
 
-		VelConReq.twist.linear.x = 0;
-		VelConReq.twist.linear.y = 0;
+			addFormCentre(formPosX, formPosY);
+		}
+	}
 
-		for(int i=0; i<VehNum; i++){
-			if(i!=CurrentVeh && FCGotState[i]){
-				Yi = VehState[i].position.east;
-				Xi = VehState[i].position.north;
-				DG = DGMat[CurrentVeh*VehNum + i];
-				G = GMat[CurrentVeh*VehNum + i];
-				FX = scaleX*FormX[CurrentVeh*VehNum + i];
-				FY = scaleY*FormY[CurrentVeh*VehNum + i];
-				Vxi = VehState[i].body_velocity.x;
-				Vyi = VehState[i].body_velocity.y;
+}
+
+void FormControl::onState(const auv_msgs::NavSts::ConstPtr& state, const int& id) {
+
+	ros::NodeHandle nh;
+	int inx;
+
+	//ROS_INFO("State ID: %d",id);
+
+	// find said vehicle
+	for (int i=0; i<vehObj.size();i++) {
+		if (vehObj[i].id == id) {
+			// remember index of id in vehObj
+			inx = i;
+			break;
+		}
+	}
+	// if older measurement return
+	if (vehObj[inx].lastState.header.stamp > state->header.stamp)
+		return;
+
+	// populate vehObj[inx] with data
+	vehObj[inx].lastState = *state;
+	vehObj[inx].measValid = true;
+
+
+	/* if state of the vehicle didn't came in last 2 seconds, disable controller for his measurements */
+	for(int i=0; i<vehObj.size(); i++) {
+		if(ros::Time::now() - vehObj[i].lastState.header.stamp > ros::Duration(2.0)) {
+			vehObj[i].measValid = false;
+		}
+	}
+
+	/* if controller is started and you have all necessary info, start the controller */
+	if(vehObj[0].measValid && FCEnable) {
+		ControlLaw();
+		//ROS_INFO("\nEstimate");
+	}
+
+}
+
+void FormControl::ControlLaw() {
+
+	auv_msgs::BodyVelocityReq velConReq;
+	double xCurr, yCurr, xi, yi;
+	double G, FX, FY, yawCurr, yaw, speedX, speedY;
+	double normalX, normalY, rij, frcX, frcY;
+	int DG;
+	ros::NodeHandle nh;
+	yCurr = vehObj[0].lastState.position.east;
+	xCurr = vehObj[0].lastState.position.north;
+	yawCurr = vehObj[0].lastState.orientation.yaw;
+
+	//RplFrcX = 0.0; // x
+	//RplFrcY = 0.0; // y
+
+	velConReq.twist.linear.x = 0;
+	velConReq.twist.linear.y = 0;
+
+	for(int i=1; i<vehObj.size(); i++){
+		// if id is out of formation bounds print error
+		if(vehObj[i].id < (int) sqrt(formX.size()) ) {
+			// if measurement is valid add contribution
+			if(vehObj[i].measValid){
+				yi = vehObj[i].lastState.position.east;
+				xi = vehObj[i].lastState.position.north;
+				DG = DGMat[vehObj[0].id*vehObj.size() + vehObj[i].id];
+				G = GMat[vehObj[0].id*vehObj.size() + vehObj[i].id];
+				FX = scaleX*formX[vehObj[0].id*vehObj.size() + vehObj[i].id];
+				FY = scaleY*formY[vehObj[0].id*vehObj.size() + vehObj[i].id];
 
 				//ROS_INFO("Pogreska po X %d = %f\n", i,XCurr - Xi + FX);
 				//ROS_INFO("Pogreska po Y %d = %f\n", i,YCurr - Yi + FY);
 
-				/* consensus control*/
-				VelConReq.twist.linear.x = VelConReq.twist.linear.x - DG*G*(XCurr - Xi + FX);
-				VelConReq.twist.linear.y = VelConReq.twist.linear.y - DG*G*(YCurr - Yi + FY);
+				/* consensus control */
+				velConReq.twist.linear.x = velConReq.twist.linear.x - DG*G*(xCurr - xi + FX);
+				velConReq.twist.linear.y = velConReq.twist.linear.y - DG*G*(yCurr - yi + FY);
 
-				/* repelling force */
+				/* repelling force
 				rij = sqrt(pow(XCurr - Xi,2) + pow(YCurr - Yi, 2));
 
 				if(rij < rf && UseRepel) {
@@ -167,333 +337,134 @@ public:
 					normalY = (YCurr - Yi)/sqrt(1 + ni*pow(rij,2));
 					RplFrcX = RplFrcX + (kf/pow(rij,2) + kd)*normalX;
 					RplFrcY = RplFrcY + (kf/pow(rij,2) + kd)*normalY;
+
 					// add aditional force for vehicle passing
-					/* frcX = RplFrcX;
+					frcX = RplFrcX;
 					frcY = RplFrcY;
 					rotateVector(frcX,frcY, 1.57);
 					RplFrcX += 0.5*frcX;
-					RplFrcY += 0.5*frcY; */
+					RplFrcY += 0.5*frcY;
 
 				}
-//				ROS_INFO("FORCE X = %f Y = %f\n",RplFrcX,RplFrcY);
-
+				*/
+				//ROS_INFO("FORCE X = %f Y = %f\n",RplFrcX,RplFrcY);
 			}
 		}
-        //ROS_INFO("Vel cons = %f, %f\n", VelConReq.twist.linear.x, VelConReq.twist.linear.y);
-		/* saturate before adding force*/
-		saturateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, MaxSpeed);
-		if (sqrt( pow(VelConReq.twist.linear.x,2) + pow(VelConReq.twist.linear.y,2) < 0.1)) {
-		    VelConReq.twist.linear.x = 0;
-		    VelConReq.twist.linear.y = 0;
-	    }
-
-		// add repelling force and saturate
-		VelConReq.twist.linear.x += RplFrcX;
-		VelConReq.twist.linear.y += RplFrcY;
-//		saturateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, MaxSpeedX);
-
-		/* rotate from NED to robot base coordinate system */
-		rotateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, - YawCurr);
-
-
-		/* add dynamic position */
-		if(!UseExtCon && DPStart) {
-			// internal DP controller
-			FormVelX = -kdp*(XCurr - FormPosX);
-			FormVelY = -kdp*(YCurr - FormPosY);
-			//ROS_INFO("FormPos = %f, %f\n", FormPosX, FormPosY);
-			//ROS_INFO("PosCurr = %f, %f\n", XCurr, YCurr);
-			rotateVector(FormVelX, FormVelY, - YawCurr - Ts*YawRateCurr);
+		else {
+			ROS_ERROR("Vehicle with ID:%d out of bounds! Check formation matrix or change id.",vehObj[i].id);
 		}
-
-		saturateVector(FormVelX, FormVelY, MaxSpeed);
-		VelConReq.twist.linear.x += FormVelX;
-		VelConReq.twist.linear.y += FormVelY;
-
-		/* saturate requested speeds */
-		saturateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, MaxSpeed);
-
-		//ROS_INFO("Vel = %f, %f\n", VelConReq.twist.linear.x, VelConReq.twist.linear.y);
-
-		/* disable axis*/
-		VelConReq.disable_axis.z = true;
-		VelConReq.disable_axis.pitch = true;
-		VelConReq.disable_axis.roll = true;
-		VelConReq.disable_axis.yaw = true;
-		VelConReq.header.stamp = ros::Time::now();
-		/* publish requested velocity */
-
-		VelConNode.publish(VelConReq);
-		//ROS_INFO("\n\n\nKraj publishanja zeljene brzine\n\n\n");
-
 	}
 
-	void idle(const auv_msgs::NavSts& ref, const auv_msgs::NavSts& state,
-			const auv_msgs::BodyVelocityReq& track) {}
 
-	void reset(const auv_msgs::NavSts& ref, const auv_msgs::NavSts& state) {}
+	//ROS_INFO("Vel cons = %f, %f\n", VelConReq.twist.linear.x, VelConReq.twist.linear.y);
+	/* saturate before adding force */
+	saturateVector(velConReq.twist.linear.x, velConReq.twist.linear.y, maxSpeed);
+	if (sqrt( pow(velConReq.twist.linear.x,2) + pow(velConReq.twist.linear.y,2) < 0.1)) {
+		velConReq.twist.linear.x = 0;
+		velConReq.twist.linear.y = 0;
+	}
 
-	void onControllerRef(const auv_msgs::BodyVelocityReq::ConstPtr& ref) {
+	// add repelling force and saturate
+	//VelConReq.twist.linear.x += RplFrcX;
+	//VelConReq.twist.linear.y += RplFrcY;
+//		saturateVector(VelConReq.twist.linear.x, VelConReq.twist.linear.y, maxSpeedX);
+
+	/* rotate from NED to robot base coordinate system */
+	rotateVector(velConReq.twist.linear.x, velConReq.twist.linear.y, - yawCurr);
+
+
+	/* add dynamic position
+	if(!UseExtCon && DPStart) {
+		// internal DP controller
+		FormVelX = -kdp*(XCurr - FormPosX);
+		FormVelY = -kdp*(YCurr - FormPosY);
+		//ROS_INFO("FormPos = %f, %f\n", FormPosX, FormPosY);
+		//ROS_INFO("PosCurr = %f, %f\n", XCurr, YCurr);
+		rotateVector(FormVelX, FormVelY, - YawCurr - Ts*YawRateCurr);
+	}
+
+
+	saturateVector(FormVelX, FormVelY, maxSpeed);
+	VelConReq.twist.linear.x += FormVelX;
+	VelConReq.twist.linear.y += FormVelY;
+	*/
+
+	/* saturate requested speeds */
+	saturateVector(velConReq.twist.linear.x, velConReq.twist.linear.y, maxSpeed);
+
+	//ROS_INFO("Vel = %f, %f\n", VelConReq.twist.linear.x, VelConReq.twist.linear.y);
+
+	/* disable axis */
+	velConReq.disable_axis.z = true;
+	velConReq.disable_axis.pitch = true;
+	velConReq.disable_axis.roll = true;
+	velConReq.disable_axis.yaw = true;
+	velConReq.header.stamp = ros::Time::now();
+
+	/* publish requested velocity */
+	velConNode.publish(velConReq);
+
+	//ROS_INFO("\n\n\nKraj publishanja zeljene brzine\n\n\n");
+}
+
+
+
+
+void FormControl::idle(const auv_msgs::NavSts& ref, const auv_msgs::NavSts& state,
+		const auv_msgs::BodyVelocityReq& track) {}
+
+void FormControl::reset(const auv_msgs::NavSts& ref, const auv_msgs::NavSts& state) {}
+
+void FormControl::onControllerRef(const auv_msgs::BodyVelocityReq::ConstPtr& ref) {
 
 //		ROS_INFO(" DP velocity = %f, %f\n",ref->twist.linear.x,ref->twist.linear.x);
-		if(UseExtCon) {
-			/* external DP controller*/
-			FormVelX = ref->twist.linear.x;
-			FormVelY = ref->twist.linear.y;
-		}
+	if(useExtCon) {
+		/* external DP controller*/
+		formVelX = ref->twist.linear.x;
+		formVelY = ref->twist.linear.y;
 	}
+}
 
-	void onPosRef(const auv_msgs::NavSts::ConstPtr& ref) {
+void FormControl::onPosRef(const auv_msgs::NavSts::ConstPtr& ref) {
 
-		/* formation center position reference*/
-		PosRef = *ref;
+	/* formation center position reference*/
+	posRef = *ref;
 
-		DPStart = true;
+	DPStart = true;
 
-		if(UseExtCon) {
+	if(useExtCon) {
 
-			ROS_INFO("FormPosExt = %f, %f\n", PosRef.position.north, FormPosY = PosRef.position.east);
+		ROS_INFO("FormPosExt = %f, %f\n", posRef.position.north, formPosY = posRef.position.east);
 
-			auv_msgs::NavSts ControllerRef = PosRef;
+		auv_msgs::NavSts controllerRef = posRef;
 
 //			ROS_INFO(" Position = %f, %f\n",ref->position.north,ref->position.east);
 
-			addFormCentre(ControllerRef.position.north, ControllerRef.position.east);
+		addFormCentre(controllerRef.position.north, controllerRef.position.east);
 //			ROS_INFO(" Position = %f, %f\n",ControllerRef.position.north,ControllerRef.position.east);
 
-			ControllerRef.header.stamp = ros::Time::now();
-			VehPosRef.publish(ControllerRef);
-
-		}
-		else {
-			FormPosX = PosRef.position.north;
-			FormPosY = PosRef.position.east;
-			ROS_INFO("FormPos2 = %f, %f\n", PosRef.position.north, FormPosY = PosRef.position.east);
-			addFormCentre(FormPosX, FormPosY);
-			ROS_INFO("FormPos2 = %f, %f\n", FormPosX, FormPosY);
-		}
-
+		controllerRef.header.stamp = ros::Time::now();
+		vehPosRef.publish(controllerRef);
 
 	}
-
-	inline void rotateVector(double& vectX, double& vectY, const double& angle) {
-
-		double tempX = vectX, tempY = vectY;
-
-		vectX = tempX*cos(angle) - tempY*sin(angle);
-		vectY = tempX*sin(angle) + tempY*cos(angle);
-
+	else {
+		formPosX = posRef.position.north;
+		formPosY = posRef.position.east;
+		ROS_INFO("FormPos2 = %f, %f\n", posRef.position.north, formPosY);
+		addFormCentre(formPosX, formPosY);
+		ROS_INFO("FormPos2 = %f, %f\n", formPosX, formPosY);
 	}
 
-	void rotateFormation(std::vector<double>& formx, std::vector<double>& formy, const int num, const double angle) {
 
-		for(int i = 0; i<num*num; i++) {
-			rotateVector(formx[i], formy[i], angle);
-		}
-	}
+}
 
-	void onFormationChange(const formation_control::Formation::ConstPtr& form) {
 
-		if(form->enableParam[0]) {
-			/*change formation*/
-			for(int i=0; i<VehNum*VehNum; i++) {
-				FormX[i] = form->FormX[i];
-				FormY[i] = form->FormY[i];
-				ROS_INFO("FormX[%d] = %f, FormY[%d] = %f",i,FormX[i],i,FormY[i]);
-			}
-		}
-
-		if(form->enableParam[1]) {
-			/*only rotate formation*/
-			rotateFormation(FormX, FormY, VehNum, 3.1415/180*form->FormYaw);
-		}
-
-		if( (form->enableParam[0] || form->enableParam[1]) && DPStart) {
-			/*Change position reference*/
-			if(UseExtCon) {
-				auv_msgs::NavSts ControllerRef = PosRef;
-
-				addFormCentre(ControllerRef.position.north, ControllerRef.position.east);
-                ROS_INFO("V2 pos ref = %f, %f\n", ControllerRef.position.north, ControllerRef.position.east);
-				VehPosRef.publish(ControllerRef);
-			}
-			else {
-				FormPosX = PosRef.position.north;
-				FormPosY = PosRef.position.east;
-
-				addFormCentre(FormPosX, FormPosY);
-			}
-		}
-
-	}
-
-	void EnableController(const std_msgs::Bool::ConstPtr& enable) {
-	
-	    navcon_msgs::EnableControl en;
-		FCEnable = enable->data;
-        
-        if (UseExtCon) {
-            en.request.enable = enable->data;
-			if(ros::service::waitForService(ParentNS[CurrentVeh]+"/FormPos_Enable", 10000)) {
-				EnableDP.call(en);
-            }
-			if (!FCEnable) {
-				DPStart = false;
-			}
-        }
-	}
-
-	inline void addFormCentre(double& refX, double& refY) {
-
-		for(int i=0; i<VehNum; i++) {
-			refX -= FormX[CurrentVeh*VehNum + i]/VehNum;
-			refY -= FormY[CurrentVeh*VehNum + i]/VehNum;
-		}
-
-	}
-
-	inline void saturate(double& num, const double& maxVal, const double& minVal) {
-
-		if(num > maxVal)
-			num = maxVal;
-		else if (num < minVal)
-			num = minVal;
-	}
-
-	inline void saturateVector(double& numX, double& numY, const double& dist) {
-
-		double tempX = numX, tempY = numY;
-
-		if(sqrt(pow(tempX,2) + pow(tempY,2)) > dist) {
-			numX = tempX*dist/sqrt(pow(tempX,2) + pow(tempY,2));
-			numY = tempY*dist/sqrt(pow(tempX,2) + pow(tempY,2));
-		}
-
-	}
-
-	void initialize_controller() {
-		ros::NodeHandle nh;
-		navcon_msgs::ConfigureVelocityController req;
-		navcon_msgs::EnableControl en;
-
-		nh.getParam("DGMat", DGMat);
-		nh.getParam("GMat", GMat);
-		nh.getParam("FormX", FormX);
-		nh.getParam("FormY", FormY);
-		nh.param("gamma",gamma, 0.1);
-		nh.param("Ts",Ts, 0.7);
-
-		nh.param("UseExtCon",UseExtCon, false);
-		if(!UseExtCon){
-			nh.getParam("kdp",kdp);
-		}
-		else {
-			en.request.enable = true;
-			if(ros::service::waitForService(ParentNS[CurrentVeh]+"/FormPos_Enable", 10000))
-				EnableDP.call(en);
-			else {
-				ROS_INFO("EXTERNAL DYNAMIC POSITIONING NOT STARTED");
-				UseExtCon = false;
-			}
-		}
-		nh.param("MaxSpeed",MaxSpeed, 1.0);
-
-		nh.param("UseRepel",UseRepel, false);
-		if(UseRepel){
-			nh.getParam("kf",kf);
-			nh.getParam("kd",kd);
-			nh.param("ni",ni, 1.0);
-			nh.param("rf",rf, 2.0);
-		}
-
-//		nh.param("nu_manual/maximum_speeds",MaxSpeed, {0.05,0.05,0.05,0,0,0.5});
-		for(int i=0; i<VehNum;i++) {
-			FCGotState[i] = false;
-			StateTime[i] = ros::Time::now();
-		}
-		FCStart = false;
-		DPStart = false;
-
-		FormVelX = 0;
-		FormVelY = 0;
-		FormPosX = 0;
-		FormPosY = 0;
-
-//		FCTempStart = false;
-
-		/* configure velocity controller for x, y axes */
-		req.request.desired_mode[0] = 2;
-		req.request.desired_mode[1] = 2;
-		req.request.desired_mode[2] = -1;
-		req.request.desired_mode[3] = -1;
-		req.request.desired_mode[4] = -1;
-		req.request.desired_mode[5] = -1;
-
-		ros::service::waitForService(ParentNS[CurrentVeh]+"/ConfigureVelocityController", -1);
-		ConfVelCon.call(req);
-	}
-
-	void onReinitializeController(const std_msgs::Bool::ConstPtr& enable) {
-		ros::NodeHandle nh;
-
-		if(enable->data) {
-			delete [] FCGotState;
-			delete [] VehState;
-			delete [] StateNode;
-			delete [] StateTime;
-
-			FCEnable = false;
-			nh.param("VehNum", VehNum, 0);
-
-			if(VehNum > 0) {
-				FCGotState = new bool[VehNum];
-				VehState = new auv_msgs::NavSts[VehNum];
-				StateNode = new ros::Subscriber[VehNum];
-				StateTime = new ros::Time[VehNum];
-				init();
-			}
-		}
-	}
-
-private:
-	ros::Subscriber *StateNode;
-	ros::Publisher VelConNode;
-	ros::ServiceClient ConfVelCon;
-	ros::Subscriber ControlEnable;
-	ros::Subscriber ReinitControl;
-	ros::Subscriber FormChange;
-	ros::Subscriber FormPosRef, VelRef;
-	ros::Publisher VehPosRef;
-	ros::ServiceClient EnableDP;
-	ros::Time *StateTime;
-
-	auv_msgs::NavSts *VehState;
-	auv_msgs::BodyVelocityReq VelConReq;
-	auv_msgs::NavSts PosRef;
-
-	double RplFrcX, RplFrcY;
-	double FormVelX, FormVelY, FormPosX, FormPosY;
-
-	bool FCEnable;
-	bool FCStart;
-	bool UseRepel;
-	bool UseExtCon;
-	bool *FCGotState;
-	bool DPStart;
-//	bool FCTempStart;
-	int VehNum;
-	int CurrentVeh;
-	double gamma, Ts, kf, ni, kd, rf, kdp, MaxSpeed;
-	std::vector<std::string> ParentNS;
-	std::vector<int> DGMat; // direct graph matrix
-	std::vector<double> GMat; // gain matrix
-	std::vector<double> FormX, FormY; // formation distances matrix
-};
 
 int main(int argc, char **argv)  {
 
 	ros::init(argc, argv, "FormationControl");
 	FormControl fctrl;
+
 
 	ros::spin();
 
