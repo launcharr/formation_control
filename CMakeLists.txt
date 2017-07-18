@@ -16,6 +16,9 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   Formation.msg
+  FormationCentre.msg
+  FormationRotation.msg
+  FormationShape.msg
   Current.msg
   FormVehObj.msg
 )

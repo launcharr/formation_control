@@ -10,6 +10,10 @@ Ts: 0.7
 # max speed
 maxSpeed: 0.5
 
+# use robust formation management
+useRobustForm: True
+#useRobustForm: False
+
 # use external DP controller
 useExtCon: False
 kdp: 0.5

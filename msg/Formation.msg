@@ -1,8 +1,13 @@
-float64[] FormX
-float64[] FormY
+#ros header
+Header header
 
-# formation rotate
-float64 FormYaw
+# shape of the formation
+FormationShape shape
 
-# enable change in [formation, formation yaw]
-bool[2] enableParam
+# formation centre (point of rotation and dynamic positioning)
+FormationCentre centre
+
+# formation shape yaw angle
+# if in pair with shape, rotates desired shape matrix absolutely
+# if alone, relatively rotates formation
+FormationRotation rotation

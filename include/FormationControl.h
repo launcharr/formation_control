@@ -35,7 +35,8 @@ namespace labust
 
 		public:
 
-			FormControl():FCEnable(false),vehObj(1)
+			FormControl():FCEnable(false),vehObj(1),FCStart(false), DPStart(false), useRobustForm(false),
+								formVelX(0.0), formVelY(0.0), formPosX(0.0), formPosY(0.0)
 			{
 				ros::NodeHandle nh, ph("~");
 
@@ -52,16 +53,20 @@ namespace labust
 
 			public:
 
-				VehicleObject():nsState(),id(),stateSub(),measValid(),lastState(){};
+				VehicleObject():nsState(),id(),stateSub(),stateValid(),lastState(),addedTS(),lastTS(){};
 				VehicleObject(std::string nsState,
 							  uint8_t id,
 							  bool measValid,
-							  ros::Subscriber stateSub)
+							  ros::Subscriber stateSub,
+							  ros::Time addedTS,
+							  ros::Time lastTS)
 							  :nsState(nsState),
 							   id(id),
 							   stateSub(stateSub),
-							   measValid(measValid),
-							   lastState(){};
+							   stateValid(measValid),
+							   lastState(),
+							   addedTS(addedTS),
+							   lastTS(lastTS){};
 
 				~VehicleObject() {
 				}
@@ -69,12 +74,16 @@ namespace labust
 				std::string nsState;
 				// id in the swarm
 				int id;
-				// is measurement valid (acquired in the last 2 seconds)
-				bool measValid;
 				// state subscriber
 				ros::Subscriber stateSub;
 				// state of the vehicle
 				auv_msgs::NavSts lastState;
+				// is measurement valid (acquired in the last 2 seconds)
+				bool stateValid;
+				// timestamp when vehicle first advertised adding in formation
+				ros::Time addedTS;
+				// timestamp when vehicle last advertised in the swarm
+				ros::Time lastTS;
 			};
 
 			void initParams(ros::NodeHandle nh, ros::NodeHandle ph);
@@ -122,9 +131,9 @@ namespace labust
 
 			inline void addFormCentre(double& refX, double& refY) {
 
-				for(int i=0; i<vehNum; i++) {
-					refX -= formX[currentVeh*vehNum + i]/vehNum;
-					refY -= formY[currentVeh*vehNum + i]/vehNum;
+				for(int i=0; i<vehObj.size(); i++) {
+					refX -= formX[vehObj[0].id* (int) sqrt( (double) formX.size() ) + vehObj[i].id]/vehObj.size();
+					refY -= formY[vehObj[0].id* (int) sqrt( (double) formY.size() ) + vehObj[i].id]/vehObj.size();
 				}
 
 			}
@@ -172,17 +181,26 @@ namespace labust
 			ros::ServiceClient enableDP;
 			ros::ServiceClient confVelCon;
 
+			// repel force components
 			double rplFrcX, rplFrcY;
-			double formVelX, formVelY, formPosX, formPosY;
+			// dynamic positioning velocity components
+			double formVelX, formVelY;
+			// desired global position
+			double formPosX, formPosY;
 
+			//
 			bool FCEnable;
 			bool FCStart;
+
+			// use force repel
 			bool useRepel;
+			// use external DP controller
 			bool useExtCon;
 			bool DPStart;
 
-			int vehNum;
-			int currentVeh;
+			// use robust formation management
+			bool useRobustForm;
+
 			double gamma, Ts, kf, ni, kd, rf, kdp, maxSpeed;
 			std::vector<int> DGMat; // direct graph matrix
 			std::vector<double> GMat; // gain matrix
