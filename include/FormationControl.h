@@ -86,7 +86,7 @@ namespace labust
 				ros::Time lastTS;
 			};
 
-			void initParams(ros::NodeHandle nh, ros::NodeHandle ph);
+			void loadParams(ros::NodeHandle nh, ros::NodeHandle ph);
 
 			void init(ros::NodeHandle nh, ros::NodeHandle ph);
 
@@ -181,8 +181,6 @@ namespace labust
 			ros::ServiceClient enableDP;
 			ros::ServiceClient confVelCon;
 
-			// repel force components
-			double rplFrcX, rplFrcY;
 			// dynamic positioning velocity components
 			double formVelX, formVelY;
 			// desired global position

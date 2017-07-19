@@ -18,7 +18,7 @@ useRobustForm: True
 useExtCon: False
 kdp: 0.5
 
-useRepel: False
+useRepel: True
 # Force repeling controller gain
 kf: 3.5
 # Force correction factor
