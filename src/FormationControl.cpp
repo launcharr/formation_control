@@ -28,10 +28,10 @@ void FormControl::init(ros::NodeHandle nh, ros::NodeHandle ph) {
 	reinitControl = nh.subscribe<std_msgs::Bool>("FCReinit", 2, &FormControl::onReinitializeController, this);
 
 	// add myself in formation
-	formResizePub = nh.advertise<formation_control::FormVehObj>(mergeNS+"/FormResizeOut",5);
+	formResizePub = nh.advertise<formation_control::FormVehObj>(mergeNS+"/FormResize",5);
 
 	// add others in my formation
-	formResizeSub = nh.subscribe<formation_control::FormVehObj>(mergeNS+"/FormResizeIn",5, &FormControl::onFormationResize, this);
+	formResizeSub = nh.subscribe<formation_control::FormVehObj>(mergeNS+"/FormResize",5, &FormControl::onFormationResize, this);
 
 	if(useExtCon) {
 		/* publish desired position and feed-forward speed to DP */
