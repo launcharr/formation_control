@@ -107,11 +107,11 @@ class CurrAdapControl {
 
 	void FormationUpdate(const double angle) {
 
-		FormReq.FormX = FormLineX;
-		FormReq.FormY = FormLineY;
-		FormReq.FormYaw = 180*angle/3.1415;
-		FormReq.enableParam[0] = true;
-		FormReq.enableParam[1] = true;
+		FormReq.shape.x = FormLineX;
+		FormReq.shape.y = FormLineY;
+		FormReq.shape.enable = true;
+		FormReq.rotation.angle = 180*angle/3.1415;
+		FormReq.rotation.enable = true;
 
 		FormationNH.publish(FormReq);
 
