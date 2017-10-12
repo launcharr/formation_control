@@ -331,7 +331,7 @@ void FormControl::onState(const auv_msgs::NavSts::ConstPtr& state, const int& id
 	vehObj[inx].lastState = *state;
 	vehObj[inx].stateValid = true;
 
-	ROS_INFO("State id: %d Pos: (%f, %f)",id, state->position.north, state->position.east);
+	ROS_INFO("State id: %d inx: %d Pos: (%f, %f)",id, inx, state->position.north, state->position.east);
 
 	/* if state of the vehicle didn't came in last 2 seconds, disable controller for his measurements */
 	for(int i=0; i<vehObj.size(); i++) {
@@ -372,13 +372,13 @@ void FormControl::ControlLaw() {
 			if(vehObj[i].stateValid){
 				yi = vehObj[i].lastState.position.east;
 				xi = vehObj[i].lastState.position.north;
-				DG = DGMat[vehObj[0].id*vehObj.size() + vehObj[i].id];
-				G = GMat[vehObj[0].id*vehObj.size() + vehObj[i].id];
-				FX = scaleX*formX[vehObj[0].id*vehObj.size() + vehObj[i].id];
-				FY = scaleY*formY[vehObj[0].id*vehObj.size() + vehObj[i].id];
+				DG = DGMat[vehObj[i].id*vehObj.size() + vehObj[i].id];
+				G = GMat[vehObj[i].id*vehObj.size() + vehObj[i].id];
+				FX = scaleX*formX[vehObj[i].id*vehObj.size() + vehObj[i].id];
+				FY = scaleY*formY[vehObj[i].id*vehObj.size() + vehObj[i].id];
 
-				//ROS_INFO("Pogreska po X %d = %f\n", i,XCurr - Xi + FX);
-				//ROS_INFO("Pogreska po Y %d = %f\n", i,YCurr - Yi + FY);
+				ROS_INFO("Pogreska po X %d = %f\n", i,xCurr - xi + FX);
+				ROS_INFO("Pogreska po Y %d = %f\n", i,yCurr - yi + FY);
 
 				/* consensus control */
 				velConReq.twist.linear.x = velConReq.twist.linear.x - DG*G*(xCurr - xi + FX);
@@ -410,7 +410,7 @@ void FormControl::ControlLaw() {
 	}
 
 
-	//ROS_INFO("Vel cons = %f, %f\n", velConReq.twist.linear.x, velConReq.twist.linear.y);
+	ROS_INFO("Vel cons = %f, %f\n", velConReq.twist.linear.x, velConReq.twist.linear.y);
 
 
 	/* saturate before adding force */
