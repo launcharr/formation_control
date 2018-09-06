@@ -4,7 +4,7 @@
 #include <fstream>
 #include <math.h>
 
-#include <auv_msgs/NavSts.h>
+#include <auv_msgs/NavigationStatus.h>
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/TwistStamped.h>
 #include <formation_control/Current.h>
@@ -22,7 +22,7 @@ public:
 		ROS_INFO("PARAM OUTO %d!!!!!\n\n\n", VehNum);
 
 		if(VehNum > 0) {
-			VehState = new auv_msgs::NavSts[VehNum];
+			VehState = new auv_msgs::NavigationStatus[VehNum];
 
 			FCGotState = new bool[VehNum];
 			StateNH = new ros::Subscriber[VehNum];
@@ -57,7 +57,7 @@ public:
 
 				FCGotState[i] = false;
 
-				StateNH[i] = nh.subscribe<auv_msgs::NavSts>(ParentNS[i]+"/stateHat",1,boost::bind(&CurrentNode::onEstimate, this, _1, i));
+				StateNH[i] = nh.subscribe<auv_msgs::NavigationStatus>(ParentNS[i]+"/stateHat",1,boost::bind(&CurrentNode::onEstimate, this, _1, i));
 
 				CurrentNH[i] = nh.advertise<geometry_msgs::TwistStamped>(ParentNS[i]+"/currents",2);
 			}
@@ -67,7 +67,7 @@ public:
 
 	}
 
-	void onEstimate(const auv_msgs::NavSts::ConstPtr& state, const int& i) {
+	void onEstimate(const auv_msgs::NavigationStatus::ConstPtr& state, const int& i) {
 
 		VehState[i] = *state;
 		FCGotState[i] = true;
@@ -124,7 +124,7 @@ public:
 
 	}
 
-	std::vector<double> CurrentFnc(auv_msgs::NavSts state){
+	std::vector<double> CurrentFnc(auv_msgs::NavigationStatus state){
 
 		std::vector<double> curr(2);
 
@@ -190,7 +190,7 @@ private:
 
 
 	geometry_msgs::TwistStamped CurrentState;
-	auv_msgs::NavSts *VehState;
+	auv_msgs::NavigationStatus *VehState;
 	bool *FCGotState;
 
 

@@ -5,53 +5,58 @@ using namespace labust::fcontrol;
 void FormControl::init(ros::NodeHandle nh, ros::NodeHandle ph) {
 
 	// initialize parameters
-	loadParams(nh, ph);
+	if(!loadParams(nh, ph)) {
+		ROS_INFO("\n\n\n\nControler not initialized...\n\n\n\n");
+		return;
+	}
 
 	/* publish velocity request */
-	velConNode = nh.advertise<auv_msgs::BodyVelocityReq>("nuRef", 1);
+	velConNode = nh.advertise<labust_msgs::BodyVelocityReq>("nuRef", 1);
 
 	/* subscribe to formation position reference */
-	formPosRef = nh.subscribe<auv_msgs::NavSts>(mergeNS+"/FormPosRef", 2, &FormControl::onPosRef, this);
+	formPosRef = nh.subscribe<auv_msgs::NavigationStatus>(mergeNS+"/FormPosRef", 2, &FormControl::onPosRef, this);
 
 	/* formation change topic */
 	formChange = nh.subscribe<formation_control::Formation>(mergeNS+"/FormChange", 2, &FormControl::onFormationChange, this);
 
 	/* vehicle state node subscribe */
-	vehObj[0].stateSub = nh.subscribe<auv_msgs::NavSts>("position",2,boost::bind(&FormControl::onState, this, _1, vehObj[0].id));
+	vehObj[0].stateSub = nh.subscribe<auv_msgs::NavigationStatus>("position",2,boost::bind(&FormControl::onState, this, _1, vehObj[0].id));
 	// get current namespace
 	vehObj[0].nsState = vehObj[0].stateSub.getTopic().c_str();
 
 	/* subscribe to topic for enabling the controller*/
-	controlEnable = nh.subscribe<std_msgs::Bool>("FCEnable", 2, &FormControl::onEnableController, this);
+	controlEnable = nh.subscribe<std_msgs::Bool>(mergeNS+"/FCEnable", 2, &FormControl::onEnableController, this);
 
 	/* subscribe to topic for re-enabling the controller*/
-	reinitControl = nh.subscribe<std_msgs::Bool>("FCReinit", 2, &FormControl::onReinitializeController, this);
+	reinitControl = nh.subscribe<std_msgs::Bool>(mergeNS+"/FCReinit", 2, &FormControl::onReinitializeController, this);
 
 	// add myself in formation
-	formResizePub = nh.advertise<formation_control::FormVehObj>(mergeNS+"/FormResize",5);
+	formResizePub = nh.advertise<formation_control::FormVehObj>(mergeNS+"/FormResize_out",5);
 
 	// add others in my formation
-	formResizeSub = nh.subscribe<formation_control::FormVehObj>(mergeNS+"/FormResize",5, &FormControl::onFormationResize, this);
+	formResizeSub = nh.subscribe<formation_control::FormVehObj>(mergeNS+"/FormResize_in",5, &FormControl::onFormationResize, this);
 
 	if(useExtCon) {
 		/* publish desired position and feed-forward speed to DP */
-		vehPosRef = nh.advertise<auv_msgs::NavSts>("PosRef", 1);
+		vehPosRef = nh.advertise<auv_msgs::NavigationStatus>("PosRef", 1);
 
 		/* enable dynamic positioning service */
-		enableDP = nh.serviceClient<navcon_msgs::EnableControl>("FormPos_Enable");
+		enableDP = nh.serviceClient<labust_msgs::EnableControl>("FormPos_Enable");
 	}
 	else {
 		/* configure velocity controller service */
-		confVelCon = nh.serviceClient<navcon_msgs::ConfigureVelocityController>("ConfigureVelocityController");
+		confVelCon = nh.serviceClient<labust_msgs::ConfigureVelocityController>("ConfigureVelocityController");
 	}
-	//	ROS_INFO("PublisherNS = %s\n", (ParentNS[CurrentVeh]+"/nuRef").c_str());
+		//ROS_INFO("PublisherNS = %s\n", (ParentNS[CurrentVeh]+"/nuRef").c_str());
 
 
 	ROS_INFO("\n\n\n\nControler init finished...\n\n\n\n");
 
 }
 
-void FormControl::loadParams(ros::NodeHandle nh, ros::NodeHandle ph) {
+bool FormControl::loadParams(ros::NodeHandle nh, ros::NodeHandle ph) {
+
+	bool status = true;
 
 	// load common formation topic
 	ph.getParam("mergeNS",mergeNS);
@@ -63,13 +68,42 @@ void FormControl::loadParams(ros::NodeHandle nh, ros::NodeHandle ph) {
 	// check if using robust formation management
 	ph.param("useRobustForm", useRobustForm, useRobustForm);
 
-	// load formation parameters
+	// load formation parameters and exit if not defined
+	if(!ph.getParam("VehNum", VehNum)) {
+		ROS_ERROR("Formation control error: VehNum parameter not defined!");
+		status = false;
+	}
+
+	// check if agent ID is outside boundaries (larger than)
+	if(vehObj[0].id >= VehNum) {
+		ROS_ERROR("Formation control error: My ID %d out of bounds!",vehObj[0].id);
+		status = false;
+	}
+
+	// check if sizes of matrices are of correct size
 	ph.getParam("DGMat", DGMat);
+	if (DGMat.size() != pow(VehNum,2) ) {
+		ROS_ERROR("Formation control error: DGMat matrix of wrong size!");
+		status = false;
+	}
+
 	ph.getParam("GMat", GMat);
+	if (GMat.size() != pow(VehNum,2) ) {
+		ROS_ERROR("Formation control error: GMat matrix of wrong size!");
+		status = false;
+	}
+
 	ph.getParam("formX", formX);
+	if (formX.size() != pow(VehNum,2) ) {
+		ROS_ERROR("Formation control error: FormX matrix of wrong size!");
+		status = false;
+	}
+
 	ph.getParam("formY", formY);
-	ph.param("gamma",gamma, 0.1);
-	ph.param("Ts",Ts, 0.7);
+	if (formY.size() != pow(VehNum,2) ) {
+		ROS_ERROR("Formation control error: FormY matrix of wrong size!");
+		status = false;
+	}
 
 	// check if using local DP controller
 	ph.param("useExtCon",useExtCon, false);
@@ -89,12 +123,13 @@ void FormControl::loadParams(ros::NodeHandle nh, ros::NodeHandle ph) {
 	if(!useExtCon){
 		ph.getParam("kdp",kdp);
 	}
+
+	return status;
 }
 
 
 void FormControl::onEnableController(const std_msgs::Bool::ConstPtr& enable) {
 
-	navcon_msgs::EnableControl en;
 	FCEnable = enable->data;
 	formation_control::FormVehObj formResizeReq;
 
@@ -117,9 +152,8 @@ void FormControl::onEnableController(const std_msgs::Bool::ConstPtr& enable) {
 		}
 
 		// and configure velcon
-		// and configure velcon
 		if(useExtCon){
-			navcon_msgs::EnableControl en;
+			labust_msgs::EnableControl en;
 
 			en.request.enable = true;
 			if(ros::service::waitForService("FormPos_Enable", 10000))
@@ -131,7 +165,7 @@ void FormControl::onEnableController(const std_msgs::Bool::ConstPtr& enable) {
 
 		}
 		if(!useExtCon) {
-			navcon_msgs::ConfigureVelocityController req;
+			labust_msgs::ConfigureVelocityController req;
 
 			/* configure velocity controller for x, y axes */
 			req.request.desired_mode = {2,2,-1,-1,-1,-1};
@@ -149,7 +183,7 @@ void FormControl::onEnableController(const std_msgs::Bool::ConstPtr& enable) {
 
 		// and configure velcon
 		if(useExtCon){
-			navcon_msgs::EnableControl en;
+			labust_msgs::EnableControl en;
 
 			en.request.enable = false;
 			if(ros::service::waitForService("FormPos_Enable", 10000))
@@ -161,7 +195,7 @@ void FormControl::onEnableController(const std_msgs::Bool::ConstPtr& enable) {
 
 		}
 		if(!useExtCon) {
-			navcon_msgs::ConfigureVelocityController req;
+			labust_msgs::ConfigureVelocityController req;
 
 			/* configure velocity controller for x, y axes */
 			req.request.desired_mode = {1,1,-1,-1,-1,-1};
@@ -187,6 +221,12 @@ void FormControl::onFormationResize(const formation_control::FormVehObj::ConstPt
 
 	ros::NodeHandle nh;
 
+	// exit if ID is out of bounds
+	if(veh->id >= VehNum) {
+		ROS_WARN("Formation control error: Agent ID %d out of bounds!",veh->id);
+		return;
+	}
+
 	if (veh->insert) {
 		/* for insertion check if vehicle is already in the formation
 		 * including vehicles with the same id as yours
@@ -194,7 +234,7 @@ void FormControl::onFormationResize(const formation_control::FormVehObj::ConstPt
 		for (int i=0; i<vehObj.size();i++) {
 			if (vehObj[i].id == veh->id) {
 				// if yes, check if it is newer timestamp
-				if(i != 0 && veh->header.stamp != vehObj[i].lastTS && useRobustForm) {
+				if(i != 0 && veh->header.stamp.toSec() > vehObj[i].lastTS.toSec() && useRobustForm) {
 					// if newer timestamp, update local info and relay advertisement
 					vehObj[i].lastTS = veh->header.stamp;
 
@@ -213,7 +253,7 @@ void FormControl::onFormationResize(const formation_control::FormVehObj::ConstPt
 		VehicleObject tmpVeh(veh->nsState,
 							 veh->id,
 							 false,
-							 nh.subscribe<auv_msgs::NavSts>(veh->nsState,2,boost::bind(&FormControl::onState, this, _1, veh->id)),
+							 nh.subscribe<auv_msgs::NavigationStatus>(veh->nsState,2,boost::bind(&FormControl::onState, this, _1, veh->id)),
 							 veh->header.stamp,
 							 veh->header.stamp);
 		vehObj.push_back(tmpVeh);
@@ -276,10 +316,15 @@ void FormControl::onFormationChange(const formation_control::Formation::ConstPtr
 
 	if(form->shape.enable) {
 		/*change formation*/
-		for(int i=0; i< formX.size(); i++) {
-			formX[i] = form->shape.x[i];
-			formY[i] = form->shape.y[i];
-			ROS_INFO("FormX[%d] = %f, FormY[%d] = %f",i,formX[i],i,formY[i]);
+		if(form->shape.x.size() == pow(VehNum,2) && form->shape.y.size() == pow(VehNum,2)) {
+			for(int i=0; i< formX.size(); i++) {
+				formX[i] = form->shape.x[i];
+				formY[i] = form->shape.y[i];
+				ROS_INFO("FormX[%d] = %f, FormY[%d] = %f",i,formX[i],i,formY[i]);
+			}
+		}
+		else {
+			ROS_WARN("Formation control error: Shape matrix size not of correct dimensions!");
 		}
 	}
 
@@ -291,7 +336,7 @@ void FormControl::onFormationChange(const formation_control::Formation::ConstPtr
 	if( (form->shape.enable || form->rotation.enable) && DPStart) {
 		/*Change position reference*/
 		if(useExtCon) {
-			auv_msgs::NavSts controllerRef = posRef;
+			auv_msgs::NavigationStatus controllerRef = posRef;
 
 			addFormCentre(controllerRef.position.north, controllerRef.position.east);
 			ROS_INFO("V2 pos ref = %f, %f\n", controllerRef.position.north, controllerRef.position.east);
@@ -308,10 +353,10 @@ void FormControl::onFormationChange(const formation_control::Formation::ConstPtr
 }
 
 
-void FormControl::onState(const auv_msgs::NavSts::ConstPtr& state, const int& id) {
+void FormControl::onState(const auv_msgs::NavigationStatus::ConstPtr& state, const int& id) {
 
 	ros::NodeHandle nh;
-	int inx;
+	int inx=999;
 
 	//ROS_INFO("State ID: %d",id);
 
@@ -323,6 +368,10 @@ void FormControl::onState(const auv_msgs::NavSts::ConstPtr& state, const int& id
 			break;
 		}
 	}
+	// if vehicle not found, exit
+	if(inx==999) {
+		return;
+	}
 	// if older measurement return
 	if (vehObj[inx].lastState.header.stamp > state->header.stamp)
 		return;
@@ -331,7 +380,7 @@ void FormControl::onState(const auv_msgs::NavSts::ConstPtr& state, const int& id
 	vehObj[inx].lastState = *state;
 	vehObj[inx].stateValid = true;
 
-	ROS_INFO("State id: %d Pos: (%f, %f)",id, state->position.north, state->position.east);
+	//ROS_INFO("State id: %d Pos: (%f, %f)",id, state->position.north, state->position.east);
 
 	/* if state of the vehicle didn't came in last 2 seconds, disable controller for his measurements */
 	for(int i=0; i<vehObj.size(); i++) {
@@ -343,52 +392,51 @@ void FormControl::onState(const auv_msgs::NavSts::ConstPtr& state, const int& id
 	/* if controller is started and you have all necessary info, start the controller */
 	if(vehObj[0].stateValid && FCEnable) {
 		ControlLaw();
-		//ROS_INFO("\nEstimate");
+		//ROS_INFO("Estimate");
 	}
 
 }
 
 void FormControl::ControlLaw() {
 
-	auv_msgs::BodyVelocityReq velConReq;
+	labust_msgs::BodyVelocityReq velConReq;
 	double xCurr, yCurr, xi, yi;
-	double G, FX, FY, yawCurr, yaw, speedX, speedY;
+	double G, FX, FY, yawCurr;
 	double normalX, normalY, rij, frcX, frcY;
 	double rplFrcX(0.0), rplFrcY(0.0);
-	int DG, vehNum;
+	int DG;
 	ros::NodeHandle nh;
 	yCurr = vehObj[0].lastState.position.east;
 	xCurr = vehObj[0].lastState.position.north;
-	yawCurr = vehObj[0].lastState.orientation.yaw;
-	vehNum = (int) sqrt(formX.size());
+	yawCurr = vehObj[0].lastState.orientation.z;
 
 	velConReq.twist.linear.x = 0;
 	velConReq.twist.linear.y = 0;
 
 
 	for(int i=1; i<vehObj.size(); i++){
-		// if id is out of formation bounds print error
-		if(vehObj[i].id < vehNum ) {
-			// if measurement is valid add contribution
-			if(vehObj[i].stateValid){
-				yi = vehObj[i].lastState.position.east;
-				xi = vehObj[i].lastState.position.north;
-				DG = DGMat[vehObj[0].id*vehNum + vehObj[i].id];
-				G = GMat[vehObj[0].id*vehNum + vehObj[i].id];
-				FX = scaleX*formX[vehObj[0].id*vehNum + vehObj[i].id];
-				FY = scaleY*formY[vehObj[0].id*vehNum + vehObj[i].id];
+		// if measurement is valid add contribution
+		//ROS_INFO("ID %d valid: %d",vehObj[i].id, vehObj[i].stateValid);
 
-				//ROS_INFO("Pogreska po X %d = %f\n", i,xCurr - xi + FX);
-				//ROS_INFO("Pogreska po Y %d = %f\n", i,yCurr - yi + FY);
+		if(vehObj[i].stateValid){
+			yi = vehObj[i].lastState.position.east;
+			xi = vehObj[i].lastState.position.north;
+			DG = DGMat[vehObj[0].id*VehNum + vehObj[i].id];
+			G = GMat[vehObj[0].id*VehNum + vehObj[i].id];
+			FX = formX[vehObj[0].id*VehNum + vehObj[i].id];
+			FY = formY[vehObj[0].id*VehNum + vehObj[i].id];
 
-				/* consensus control */
-				velConReq.twist.linear.x = velConReq.twist.linear.x - DG*G*(xCurr - xi + FX);
-				velConReq.twist.linear.y = velConReq.twist.linear.y - DG*G*(yCurr - yi + FY);
+			//ROS_INFO("dX %d = %f\tdY %d = %f", i,xCurr - xi + FX, i,yCurr - yi + FY);
 
+			/* consensus control */
+			velConReq.twist.linear.x = velConReq.twist.linear.x - DG*G*(xCurr - xi + FX);
+			velConReq.twist.linear.y = velConReq.twist.linear.y - DG*G*(yCurr - yi + FY);
+
+			if(useRepel) {
 				/* repelling force */
 				rij = sqrt(pow(xCurr - xi,2) + pow(yCurr - yi, 2));
 
-				if(rij < rf && useRepel) {
+				if(rij < rf) {
 					normalX = (xCurr - xi)/sqrt(1 + ni*pow(rij,2));
 					normalY = (yCurr - yi)/sqrt(1 + ni*pow(rij,2));
 					rplFrcX = rplFrcX + (kf/pow(rij,2) + kd)*normalX;
@@ -402,16 +450,13 @@ void FormControl::ControlLaw() {
 					rplFrcY += 0.5*frcY;
 
 				}
-				//ROS_INFO("FORCE X = %f Y = %f\n",RplFrcX,RplFrcY);
 			}
-		}
-		else {
-			ROS_ERROR("Vehicle with ID:%d out of bounds! Check formation matrix or change id.",vehObj[i].id);
+			//ROS_INFO("FORCE X = %f Y = %f\n",RplFrcX,RplFrcY);
 		}
 	}
 
 
-	ROS_INFO("Vel cons = %f, %f\n", velConReq.twist.linear.x, velConReq.twist.linear.y);
+	//ROS_INFO("Vel cons = %f, %f\n", velConReq.twist.linear.x, velConReq.twist.linear.y);
 
 
 	/* saturate before adding force */
@@ -426,7 +471,7 @@ void FormControl::ControlLaw() {
 	velConReq.twist.linear.y += rplFrcY;
 	saturateVector(velConReq.twist.linear.x, velConReq.twist.linear.y, maxSpeed);
 
-	ROS_INFO("Vel cons3 = %f, %f\n", velConReq.twist.linear.x, velConReq.twist.linear.y);
+	//ROS_INFO("Vel cons3 = %f, %f\n", velConReq.twist.linear.x, velConReq.twist.linear.y);
 
 	/* rotate from NED to robot base coordinate system */
 	rotateVector(velConReq.twist.linear.x, velConReq.twist.linear.y, - yawCurr);
@@ -465,14 +510,12 @@ void FormControl::ControlLaw() {
 
 
 
+void FormControl::idle(const auv_msgs::NavigationStatus& ref, const auv_msgs::NavigationStatus& state,
+		const labust_msgs::BodyVelocityReq& track) {}
 
+void FormControl::reset(const auv_msgs::NavigationStatus& ref, const auv_msgs::NavigationStatus& state) {}
 
-void FormControl::idle(const auv_msgs::NavSts& ref, const auv_msgs::NavSts& state,
-		const auv_msgs::BodyVelocityReq& track) {}
-
-void FormControl::reset(const auv_msgs::NavSts& ref, const auv_msgs::NavSts& state) {}
-
-void FormControl::onPosRef(const auv_msgs::NavSts::ConstPtr& ref) {
+void FormControl::onPosRef(const auv_msgs::NavigationStatus::ConstPtr& ref) {
 
 	/* formation center position reference*/
 	posRef = *ref;
@@ -483,7 +526,7 @@ void FormControl::onPosRef(const auv_msgs::NavSts::ConstPtr& ref) {
 
 		ROS_INFO("FormPosExt = %f, %f\n", posRef.position.north, formPosY = posRef.position.east);
 
-		auv_msgs::NavSts controllerRef = posRef;
+		auv_msgs::NavigationStatus controllerRef = posRef;
 
 //			ROS_INFO(" Position = %f, %f\n",ref->position.north,ref->position.east);
 

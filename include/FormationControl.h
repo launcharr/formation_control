@@ -15,17 +15,14 @@
 #include <math.h>
 #include <string.h>
 
-#include <auv_msgs/BodyVelocityReq.h>
-#include <auv_msgs/BodyForceReq.h>
-#include <auv_msgs/NavSts.h>
+#include <labust_msgs/BodyVelocityReq.h>
+#include <auv_msgs/BodyForceRequest.h>
+#include <auv_msgs/NavigationStatus.h>
 #include <std_msgs/Bool.h>
-#include <navcon_msgs/ConfigureVelocityController.h>
-#include <navcon_msgs/EnableControl.h>
+#include <labust_msgs/ConfigureVelocityController.h>
+#include <labust_msgs/EnableControl.h>
 #include <formation_control/Formation.h>
 #include <formation_control/FormVehObj.h>
-
-#define scaleX 1
-#define scaleY 1
 
 namespace labust
 {
@@ -77,7 +74,7 @@ namespace labust
 				// state subscriber
 				ros::Subscriber stateSub;
 				// state of the vehicle
-				auv_msgs::NavSts lastState;
+				auv_msgs::NavigationStatus lastState;
 				// is measurement valid (acquired in the last 2 seconds)
 				bool stateValid;
 				// timestamp when vehicle first advertised adding in formation
@@ -86,24 +83,24 @@ namespace labust
 				ros::Time lastTS;
 			};
 
-			void loadParams(ros::NodeHandle nh, ros::NodeHandle ph);
+			bool loadParams(ros::NodeHandle nh, ros::NodeHandle ph);
 
 			void init(ros::NodeHandle nh, ros::NodeHandle ph);
 
 			void onFormationResize(const formation_control::FormVehObj::ConstPtr& veh);
 
-			void onState(const auv_msgs::NavSts::ConstPtr& state, const int& i);
+			void onState(const auv_msgs::NavigationStatus::ConstPtr& state, const int& i);
 
 			void ControlLaw();
 
-			void idle(const auv_msgs::NavSts& ref, const auv_msgs::NavSts& state,
-					const auv_msgs::BodyVelocityReq& track);
+			void idle(const auv_msgs::NavigationStatus& ref, const auv_msgs::NavigationStatus& state,
+					const labust_msgs::BodyVelocityReq& track);
 
-			void reset(const auv_msgs::NavSts& ref, const auv_msgs::NavSts& state);
+			void reset(const auv_msgs::NavigationStatus& ref, const auv_msgs::NavigationStatus& state);
 
-			void onControllerRef(const auv_msgs::BodyVelocityReq::ConstPtr& ref);
+			void onControllerRef(const labust_msgs::BodyVelocityReq::ConstPtr& ref);
 
-			void onPosRef(const auv_msgs::NavSts::ConstPtr& ref);
+			void onPosRef(const auv_msgs::NavigationStatus::ConstPtr& ref);
 
 			inline void rotateVector(double& vectX, double& vectY, const double& angle) {
 
@@ -173,8 +170,8 @@ namespace labust
 
 			std::string mergeNS;
 
-			auv_msgs::BodyVelocityReq velConReq;
-			auv_msgs::NavSts posRef;
+			labust_msgs::BodyVelocityReq velConReq;
+			auv_msgs::NavigationStatus posRef;
 
 			ros::Subscriber velRef;
 			ros::Publisher vehPosRef;
@@ -199,10 +196,11 @@ namespace labust
 			// use robust formation management
 			bool useRobustForm;
 
-			double gamma, Ts, kf, ni, kd, rf, kdp, maxSpeed;
+			double kf, ni, kd, rf, kdp, maxSpeed;
 			std::vector<int> DGMat; // direct graph matrix
 			std::vector<double> GMat; // gain matrix
 			std::vector<double> formX, formY; // formation distances matrix
+			int VehNum;
 
 		};
 	}

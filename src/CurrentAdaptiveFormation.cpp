@@ -5,7 +5,7 @@
 #include <math.h>
 
 
-#include <auv_msgs/NavSts.h>
+#include <auv_msgs/NavigationStatus.h>
 #include <std_msgs/Bool.h>
 #include <formation_control/Formation.h>
 #include <geometry_msgs/TwistStamped.h>
@@ -30,7 +30,7 @@ class CurrAdapControl {
 		if(VehNum > 0) {
 
 			CurrentState = new geometry_msgs::TwistStamped[VehNum];
-			//VehState = new auv_msgs::NavSts[VehNum];
+			//VehState = new auv_msgs::NavigationStatus[VehNum];
 
 			FCGotCurr = new bool[VehNum];
 			CurrentNH = new ros::Subscriber[VehNum];
@@ -135,7 +135,7 @@ private:
 	ros::Publisher FormationNH;
 
 	geometry_msgs::TwistStamped *CurrentState;
-	//auv_msgs::NavSts *VehState;
+	//auv_msgs::NavigationStatus *VehState;
 	formation_control::Formation FormReq;
 
 	double deltaPhi, FormDist;

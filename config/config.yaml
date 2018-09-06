@@ -1,11 +1,5 @@
-# Direct graph matrix
-DGMat: [0, 1, 1, 1, 0, 1, 1, 1, 0]
-
-# Velocity gain
-gamma: 0.1
-
-# Sampling time for yaw orientation rate 
-Ts: 0.7
+# Maximum number of vehicles
+VehNum: 5
 
 # max speed
 maxSpeed: 0.5
@@ -18,7 +12,7 @@ useRobustForm: True
 useExtCon: False
 kdp: 0.5
 
-useRepel: True
+useRepel: False
 # Force repeling controller gain
 kf: 3.5
 # Force correction factor
@@ -28,11 +22,31 @@ ni: 0.5
 # repel radius
 rf: 2.0
 
+# Direct graph matrix for 
+DGMat: [0, 1, 1, 0, 0,
+        1, 0, 1, 0, 0,
+        1, 1, 0, 0, 0,
+        0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0]
+
 # Gain matrix
-GMat: [0, 0.08, 0.08, 0.08, 0, 0.08, 0.08, 0.08, 0]
+GMat: [   0, 0.08, 0.08, 0, 0,
+       0.08,    0, 0.08, 0, 0,
+       0.08, 0.08,    0, 0, 0,
+          0,    0,    0, 0, 0,
+          0,    0,    0, 0, 0]
 
 # Formation distances matrix
-formX: [0, 3, 1.5, -3, 0, -1.5, -1.5, 1.5, 0]
-formY: [0, 0, 3, 0, 0, 3, -3, -3, 0]
+formX: [    0,   3,  1.5, 0, 0,
+           -3,   0, -1.5, 0, 0,
+         -1.5, 1.5,    0, 0, 0,
+            0,   0,    0, 0, 0, 
+            0,   0,    0, 0, 0]
+
+formY: [ 0,  0,  3,  0,  0,
+         0,  0,  3,  0,  0,
+        -3, -3,  0,  0,  0,
+         0,  0,  0,  0,  0,
+         0,  0,  0,  0,  0]
 
 

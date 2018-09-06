@@ -6,7 +6,7 @@ project(formation_control)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   auv_msgs
-  navcon_msgs
+  labust_msgs
   geometry_msgs
   roscpp
   rospy
@@ -45,7 +45,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES formation_control
-	CATKIN_DEPENDS auv_msgs navcon_msgs geometry_msgs roscpp rospy
+	CATKIN_DEPENDS auv_msgs labust_msgs geometry_msgs roscpp rospy
 #  DEPENDS system_lib
 )
 
