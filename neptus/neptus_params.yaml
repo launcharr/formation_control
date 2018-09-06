@@ -1,7 +1,0 @@
-entitiy: 160
-# ID: 0f:01
-id: 3841
-name: "buddy"
-# CCU=0, HPS, UUV, USV, UAV, UGV, STATIC, MOBILE, WSN
-sys_type: 2
-service: "imc+info://0.0.0.0/version/5.4.0;imc+udp://10.0.10.160:6002/"
