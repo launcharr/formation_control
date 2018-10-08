@@ -32,7 +32,9 @@
 	                
 		        <!-- The UDP relay setup for broadcast -->
 			    <node pkg="transport_bridges" type="udp_relay" name="announce_f1" if="$(eval arg('veh_id') != 0)">
-			        <param name="use_broadcast" value="true" />
+			        <param name="use_broadcast" value="false" />
+			        <param name="local_address" value="$(arg local_address)" />
+			        <param name="remote_address" value="$(arg local_address)" />
                     <param name="local_port" value="$(eval arg('local_port') + arg('veh_id') + 1)" />
                     <param name="remote_port" value="$(eval arg('local_port') + 1)" />
 			        <remap from="incoming" to="udp_in" />
@@ -40,7 +42,9 @@
 			    </node>
 	
 			    <node pkg="transport_bridges" type="udp_relay" name="announce_f2" if="$(eval arg('veh_id') != 1)">
-		            <param name="use_broadcast" value="true" />
+		            <param name="use_broadcast" value="false" />
+		            <param name="local_address" value="$(arg local_address)" />
+			        <param name="remote_address" value="$(arg local_address)" />
                     <param name="local_port" value="$(eval arg('local_port') + arg('veh_id') + 1)" />
                     <param name="remote_port" value="$(eval arg('local_port') + 2)" />
 		            <remap from="incoming" to="udp_in" />
@@ -48,7 +52,9 @@
 		        </node>
 		        
 		        <node pkg="transport_bridges" type="udp_relay" name="announce_f3" if="$(eval arg('veh_id') != 2)">
-		            <param name="use_broadcast" value="true" />
+		            <param name="use_broadcast" value="false" />
+		            <param name="local_address" value="$(arg local_address)" />
+			        <param name="remote_address" value="$(arg local_address)" />
                     <param name="local_port" value="$(eval arg('local_port') + arg('veh_id') + 1)" />
                     <param name="remote_port" value="$(eval arg('local_port') + 3)" />
 		            <remap from="incoming" to="udp_in" />
@@ -56,7 +62,9 @@
 		        </node>
 		        
 		        <node pkg="transport_bridges" type="udp_relay" name="announce_f4" if="$(eval arg('veh_id') != 3)">
-		            <param name="use_broadcast" value="true" />
+		            <param name="use_broadcast" value="false" />
+		            <param name="local_address" value="$(arg local_address)" />
+			        <param name="remote_address" value="$(arg local_address)" />
                     <param name="local_port" value="$(eval arg('local_port') + arg('veh_id') + 1)" />
                     <param name="remote_port" value="$(eval arg('local_port') + 4)" />
 		            <remap from="incoming" to="udp_in" />
@@ -64,7 +72,9 @@
 		        </node>
 		        
 		        <node pkg="transport_bridges" type="udp_relay" name="announce_f5" if="$(eval arg('veh_id') != 4)">
-		            <param name="use_broadcast" value="true" />
+		            <param name="use_broadcast" value="false" />
+		            <param name="local_address" value="$(arg local_address)" />
+			        <param name="remote_address" value="$(arg local_address)" />
                     <param name="local_port" value="$(eval arg('local_port') + arg('veh_id') + 1)" />
                     <param name="remote_port" value="$(eval arg('local_port') + 5)" />
                     <!-- <param name="self_filter" value="false" /> -->
@@ -73,7 +83,9 @@
 		        </node>
 		        
 		        <node pkg="transport_bridges" type="udp_relay" name="announce_topside">
-	                <param name="use_broadcast" value="true" />
+	                <param name="use_broadcast" value="false" />
+	                <param name="local_address" value="$(arg local_address)" />
+			        <param name="remote_address" value="$(arg local_address)" />
                     <param name="local_port" value="$(eval arg('local_port') + arg('veh_id') + 1)" />
                     <param name="remote_port" value="$(arg local_port)" />
 	                <remap from="incoming" to="udp_in" />
@@ -84,6 +96,7 @@
 		    <node pkg="ros2udp" type="ros2udp" name="topic_bridge">
 		        <rosparam param="share_topics" subst_value="True">["/$(arg veh_name)/position","/FormResize_out"]</rosparam>
 		        <rosparam param="share_topics_remap">["","/FormResize_in"]</rosparam>
+		        <param name="unknown_publisher_allow" value="true" />
 		    </node>
 	    </group>
     </group>

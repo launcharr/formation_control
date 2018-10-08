@@ -13,7 +13,7 @@ byobu new-session -d -s "$BYOBU_SESSION_NAME" "roslaunch -p $LOCAL_PORT formatio
 # start every formation control node
 for (( i=0; i<${len}; i++ ));
 do
-    comm="ssh -t stdops@${VEH_IP[$i]} 'source ~/subcultron_ws/devel/setup.bash && roslaunch formation_control formation_pladypos.launch veh_name:=${VEH_NAME[$i]} veh_id:=$i local_simulation:=false local_address:=${VEH_IP[$i]} local_port:=$ROS2UDP_PORT && bash -l'"
+    comm="ssh -t stdops@${VEH_IP[$i]} 'source ~/subcultron_ws/devel/setup.bash && roslaunch formation_control formation_${VEH_NAME[$i]}.launch veh_name:=${VEH_NAME[$i]} veh_id:=$i local_address:=${VEH_IP[$i]} local_port:=$ROS2UDP_PORT && bash -l'"
     byobu new-window -n "${VEH_NAME[$i]} fc" -t "$BYOBU_SESSION_NAME" "$comm"
 done
 
