@@ -2,6 +2,7 @@
 	<arg name="veh_name" default="losinj" />
 	<arg name="veh_id" default="1" />
 	
+	<arg name="topside_address" default="10.0.10.41" />
 	<arg name="local_address" default="10.0.101.100" />
 	<arg name="veh1_address"  default="10.0.100.100" />
 	<arg name="veh2_address"  default="10.0.102.100" />
