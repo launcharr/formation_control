@@ -481,12 +481,18 @@ void FormControl::ControlLaw() {
 		currFormCentreX = currFormCentreX / vehObj.size();
 		currFormCentreY = currFormCentreY / vehObj.size();
 
-		// internal DP controller that centers current formation
-		formVelX = -kdp*(currFormCentreX - formPosX);
-		formVelY = -kdp*(currFormCentreY - formPosY);
-		//ROS_INFO("formPos = %f, %f\n", formPosX, formPosY);
-		//ROS_INFO("PosCurr = %f, %f\n", xCurr, yCurr);
-		rotateVector(formVelX, formVelY, - yawCurr);
+		if(sqrt(pow(currFormCentreX - formPosX,2)+pow(currFormCentreY - formPosY,2)) > 0.5) {
+			// internal DP controller that centers current formation
+			formVelX = -kdp*(currFormCentreX - formPosX);
+			formVelY = -kdp*(currFormCentreY - formPosY);
+			//ROS_INFO("formPos = %f, %f\n", formPosX, formPosY);
+			//ROS_INFO("PosCurr = %f, %f\n", xCurr, yCurr);
+			rotateVector(formVelX, formVelY, - yawCurr);
+		}
+		else {
+			formVelX = 0;
+			formVelY = 0;
+		}
 	}
 
 	saturateVector(formVelX, formVelY, maxSpeed);
