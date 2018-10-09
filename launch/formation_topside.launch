@@ -4,79 +4,129 @@
     <arg name="local_port" default="39090" />
 	<arg name="veh_num" default="5" />
 	
+	<arg name="veh1_address"  default="10.0.100.100" />
+	<arg name="veh2_address"  default="10.0.101.100" />
+	<arg name="veh3_address"  default="10.0.102.100" />
+	<arg name="veh4_address"  default="10.0.103.100" />
+	<arg name="veh5_address"  default="10.0.104.100" />
 	
 	<group ns="formation_topic_share">
            
-            <!-- If not simulation, since broadcasting only one transport bridge needed -->
-            <group unless="$(arg local_simulation)">
-                <node pkg="transport_bridges" type="udp_relay" name="announce_f" output="screen">
-                    <param name="use_broadcast" value="true" />
-                    <param name="local_address" value="$(arg local_address)" />
-                    <param name="local_port" value="$(arg local_port)" />
-                    <param name="remote_port" value="$(arg local_port)" />
-                    <param name="self_filter" value="true" />
-                    <remap from="incoming" to="udp_in" />
-                    <remap from="outgoing" to="udp_out" />
-                </node>
-            </group>
+        <!-- If not simulation, since broadcasting only one transport bridge needed -->
+        <group unless="$(arg local_simulation)">
+
+         <!-- The UDP relay setup for broadcast -->
+   <node pkg="transport_bridges" type="udp_relay" name="announce_v1">
+             <param name="use_broadcast" value="false" />
+             <param name="local_address" value="$(arg local_address)" />
+             <param name="remote_address" value="$(arg veh1_address)" />
+             <param name="local_port" value="$(arg local_port)" />
+             <param name="remote_port" value="$(arg local_port)" />
+             <remap from="incoming" to="udp_in" />
+             <remap from="outgoing" to="udp_out" />
+      </node>
+      
+      <node pkg="transport_bridges" type="udp_relay" name="announce_v2">
+             <param name="use_broadcast" value="false" />
+             <param name="local_address" value="$(arg local_address)" />
+             <param name="remote_address" value="$(arg veh2_address)" />
+             <param name="local_port" value="$(arg local_port)" />
+             <param name="remote_port" value="$(arg local_port)" />
+             <remap from="incoming" to="udp_in" />
+          <remap from="outgoing" to="udp_out" />
+      </node>
+      
+      <node pkg="transport_bridges" type="udp_relay" name="announce_v3">
+             <param name="use_broadcast" value="false" />
+             <param name="local_address" value="$(arg local_address)" />
+             <param name="remote_address" value="$(arg veh3_address)" />
+             <param name="local_port" value="$(arg local_port)" />
+             <param name="remote_port" value="$(arg local_port)" />
+             <remap from="incoming" to="udp_in" />
+             <remap from="outgoing" to="udp_out" />
+      </node>
+      
+      <node pkg="transport_bridges" type="udp_relay" name="announce_v4">
+             <param name="use_broadcast" value="false" />
+             <param name="local_address" value="$(arg local_address)" />
+             <param name="remote_address" value="$(arg veh4_address)" />
+             <param name="local_port" value="$(arg local_port)" />
+             <param name="remote_port" value="$(arg local_port)" />
+             <!-- <param name="self_filter" value="false" /> -->
+             <remap from="incoming" to="udp_in" />
+             <remap from="outgoing" to="udp_out" />
+      </node>
+      
+      <node pkg="transport_bridges" type="udp_relay" name="announce_v5">
+             <param name="use_broadcast" value="false" />
+             <param name="local_address" value="$(arg local_address)" />
+             <param name="remote_address" value="$(arg veh5_address)" />
+             <param name="local_port" value="$(arg local_port)" />
+             <param name="remote_port" value="$(arg local_port)" />
+             <remap from="incoming" to="udp_in" />
+             <remap from="outgoing" to="udp_out" />
+         </node>
+        </group>
+        
+        <group if="$(arg local_simulation)">
+            <!-- The UDP relay setup for broadcast -->
+            <node pkg="transport_bridges" type="udp_relay" name="announce_f1">
+                <param name="use_broadcast" value="false" />
+       <param name="local_address" value="$(arg local_address)" />
+       <param name="remote_address" value="$(arg local_address)" />
+                <param name="local_port" value="$(arg local_port)" />
+                <param name="remote_port" value="$(eval arg('local_port') + 1)" />
+                <remap from="incoming" to="udp_in" />
+                <remap from="outgoing" to="udp_out" />
+            </node>
+
+            <node pkg="transport_bridges" type="udp_relay" name="announce_f2">
+                <param name="use_broadcast" value="false" />
+       <param name="local_address" value="$(arg local_address)" />
+       <param name="remote_address" value="$(arg local_address)" />
+                <param name="local_port" value="$(arg local_port)" />
+                <param name="remote_port" value="$(eval arg('local_port') + 2)" />
+                <remap from="incoming" to="udp_in" />
+                <remap from="outgoing" to="udp_out" />
+            </node>
             
-            <group if="$(arg local_simulation)">
-                <!-- The UDP relay setup for broadcast -->
-                <node pkg="transport_bridges" type="udp_relay" name="announce_f1" if="$(eval arg('veh_num') >= 1)">
-                    <param name="use_broadcast" value="false" />
-			        <param name="local_address" value="$(arg local_address)" />
-			        <param name="remote_address" value="$(arg local_address)" />
-                    <param name="local_port" value="$(arg local_port)" />
-                    <param name="remote_port" value="$(eval arg('local_port') + 1)" />
-                    <remap from="incoming" to="udp_in" />
-                    <remap from="outgoing" to="udp_out" />
-                </node>
-    
-                <node pkg="transport_bridges" type="udp_relay" name="announce_f2" if="$(eval arg('veh_num') >= 2)">
-                    <param name="use_broadcast" value="false" />
-			        <param name="local_address" value="$(arg local_address)" />
-			        <param name="remote_address" value="$(arg local_address)" />
-                    <param name="local_port" value="$(arg local_port)" />
-                    <param name="remote_port" value="$(eval arg('local_port') + 2)" />
-                    <remap from="incoming" to="udp_in" />
-                    <remap from="outgoing" to="udp_out" />
-                </node>
-                
-                <node pkg="transport_bridges" type="udp_relay" name="announce_f3" if="$(eval arg('veh_num') >= 3)">
-                    <param name="use_broadcast" value="false" />
-			        <param name="local_address" value="$(arg local_address)" />
-			        <param name="remote_address" value="$(arg local_address)" />
-                    <param name="local_port" value="$(arg local_port)" />
-                    <param name="remote_port" value="$(eval arg('local_port') + 3)" />
-                    <remap from="incoming" to="udp_in" />
-                    <remap from="outgoing" to="udp_out" />
-                </node>
-                
-                <node pkg="transport_bridges" type="udp_relay" name="announce_f4" if="$(eval arg('veh_num') >= 4)">
-                    <param name="use_broadcast" value="false" />
-			        <param name="local_address" value="$(arg local_address)" />
-			        <param name="remote_address" value="$(arg local_address)" />
-                    <param name="local_port" value="$(arg local_port)" />
-                    <param name="remote_port" value="$(eval arg('local_port') + 4)" />
-                    <remap from="incoming" to="udp_in" />
-                    <remap from="outgoing" to="udp_out" />
-                </node>
-                
-                <node pkg="transport_bridges" type="udp_relay" name="announce_f5" if="$(eval arg('veh_num') >= 5)">
-                    <param name="use_broadcast" value="false" />
-			        <param name="local_address" value="$(arg local_address)" />
-			        <param name="remote_address" value="$(arg local_address)" />
-                    <param name="local_port" value="$(arg local_port)" />
-                    <param name="remote_port" value="$(eval arg('local_port') + 5)" />
-                    <remap from="incoming" to="udp_in" />
-                    <remap from="outgoing" to="udp_out" />
-                </node>
-            </group>
-    
-            <node pkg="ros2udp" type="ros2udp" name="topic_bridge">
-                <rosparam param="share_topics" subst_value="True">["/FCEnable","/FCReinit","/FormPosRef","/FormChange"]</rosparam>
-                <param name="unknown_publisher_allow" value="true" />
+            <node pkg="transport_bridges" type="udp_relay" name="announce_f3">
+                <param name="use_broadcast" value="false" />
+       <param name="local_address" value="$(arg local_address)" />
+       <param name="remote_address" value="$(arg local_address)" />
+                <param name="local_port" value="$(arg local_port)" />
+                <param name="remote_port" value="$(eval arg('local_port') + 3)" />
+                <remap from="incoming" to="udp_in" />
+                <remap from="outgoing" to="udp_out" />
+            </node>
+            
+            <node pkg="transport_bridges" type="udp_relay" name="announce_f4">
+                <param name="use_broadcast" value="false" />
+       <param name="local_address" value="$(arg local_address)" />
+       <param name="remote_address" value="$(arg local_address)" />
+                <param name="local_port" value="$(arg local_port)" />
+                <param name="remote_port" value="$(eval arg('local_port') + 4)" />
+                <remap from="incoming" to="udp_in" />
+                <remap from="outgoing" to="udp_out" />
+            </node>
+            
+            <node pkg="transport_bridges" type="udp_relay" name="announce_f5">
+                <param name="use_broadcast" value="false" />
+       <param name="local_address" value="$(arg local_address)" />
+       <param name="remote_address" value="$(arg local_address)" />
+                <param name="local_port" value="$(arg local_port)" />
+                <param name="remote_port" value="$(eval arg('local_port') + 5)" />
+                <remap from="incoming" to="udp_in" />
+                <remap from="outgoing" to="udp_out" />
             </node>
         </group>
+
+        <node pkg="ros2udp" type="ros2udp" name="topic_bridge" output="screen">
+            <rosparam param="share_topics" subst_value="True">["/FCEnable","/FCReinit","/FormPosRef","/FormChange"]</rosparam>
+            <param name="unknown_publisher_allow" value="true" />
+        </node>
+    </group>
+
+    <node pkg="rosbag" type="record" name="formation_bagging" args="--split --size=1024 -a -o formation_topside_$(arg veh_num)veh" unless="$(arg local_simulation)"/>
 
 </launch>

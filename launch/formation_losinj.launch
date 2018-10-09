@@ -82,6 +82,6 @@
 	    </group>
     </group>
 
-    
+    <node pkg="rosbag" type="record" name="formation_bagging" args="--split --size=1024 -a -o formation_$(arg veh_num)veh_$(arg veh_name)"/>
 
 </launch>
