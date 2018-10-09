@@ -1,6 +1,7 @@
 <launch>
 	<arg name="veh_name" default="mljet" />
 	<arg name="veh_id" default="4" />
+	<arg name="veh_num" default="5" />
 	
 	<arg name="topside_address" default="10.0.10.41" />
 	<arg name="local_address" default="10.0.104.100" />
