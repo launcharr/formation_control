@@ -342,12 +342,6 @@ void FormControl::onFormationChange(const formation_control::Formation::ConstPtr
 			ROS_INFO("V2 pos ref = %f, %f\n", controllerRef.position.north, controllerRef.position.east);
 			vehPosRef.publish(controllerRef);
 		}
-		else {
-			formPosX = posRef.position.north;
-			formPosY = posRef.position.east;
-
-			addFormCentre(formPosX, formPosY);
-		}
 	}
 
 }
@@ -394,7 +388,6 @@ void FormControl::onState(const auv_msgs::NavigationStatus::ConstPtr& state, con
 		ControlLaw();
 		//ROS_INFO("Estimate");
 	}
-
 }
 
 void FormControl::ControlLaw() {
@@ -478,9 +471,19 @@ void FormControl::ControlLaw() {
 
 	/* add dynamic position*/
 	if(!useExtCon && DPStart) {
-		// internal DP controller
-		formVelX = -kdp*(xCurr - formPosX);
-		formVelY = -kdp*(yCurr - formPosY);
+		double currFormCentreX = 0, currFormCentreY = 0;
+
+		// calculate current formation centre
+		for(int i=0; i < vehObj.size(); i++) {
+			currFormCentreX = currFormCentreX + vehObj[i].lastState.position.north;
+			currFormCentreY = currFormCentreY + vehObj[i].lastState.position.east;
+		}
+		currFormCentreX = currFormCentreX / vehObj.size();
+		currFormCentreY = currFormCentreY / vehObj.size();
+
+		// internal DP controller that centers current formation
+		formVelX = -kdp*(currFormCentreX - formPosX);
+		formVelY = -kdp*(currFormCentreY - formPosY);
 		//ROS_INFO("formPos = %f, %f\n", formPosX, formPosY);
 		//ROS_INFO("PosCurr = %f, %f\n", xCurr, yCurr);
 		rotateVector(formVelX, formVelY, - yawCurr);
@@ -541,7 +544,7 @@ void FormControl::onPosRef(const auv_msgs::NavigationStatus::ConstPtr& ref) {
 		formPosX = posRef.position.north;
 		formPosY = posRef.position.east;
 		ROS_INFO("FormPos2 = %f, %f\n", posRef.position.north, formPosY);
-		addFormCentre(formPosX, formPosY);
+		//addFormCentre(formPosX, formPosY);
 		ROS_INFO("FormPos2 = %f, %f\n", formPosX, formPosY);
 	}
 
