@@ -161,6 +161,7 @@ namespace labust
 			std::vector<VehicleObject> vehObj;
 
 			ros::Publisher velConNode;
+			ros::Publisher headingNode;
 			ros::Subscriber controlEnable;
 			ros::Subscriber reinitControl;
 			ros::Subscriber formChange;

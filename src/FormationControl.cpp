@@ -13,6 +13,8 @@ void FormControl::init(ros::NodeHandle nh, ros::NodeHandle ph) {
 	/* publish velocity request */
 	velConNode = nh.advertise<labust_msgs::BodyVelocityReq>("nuRef", 1);
 
+	headingNode = nh.advertise<auv_msgs::NavigationStatus>("stateRef", 1);
+
 	/* subscribe to formation position reference */
 	formPosRef = nh.subscribe<auv_msgs::NavigationStatus>(mergeNS+"/FormPosRef", 2, &FormControl::onPosRef, this);
 
@@ -168,10 +170,14 @@ void FormControl::onEnableController(const std_msgs::Bool::ConstPtr& enable) {
 			labust_msgs::ConfigureVelocityController req;
 
 			/* configure velocity controller for x, y axes */
-			req.request.desired_mode = {2,2,-1,-1,-1,-1};
+			req.request.desired_mode = {2,2,-1,-1,-1,2};
 
 			ros::service::waitForService("ConfigureVelocityController", -1);
 			confVelCon.call(req);
+
+			labust_msgs::EnableControl srv;
+			srv.request.enable = true;
+			ros::service::call("HDG_enable",srv);
 		}
 	}
 	else {
@@ -198,7 +204,7 @@ void FormControl::onEnableController(const std_msgs::Bool::ConstPtr& enable) {
 			labust_msgs::ConfigureVelocityController req;
 
 			/* configure velocity controller for x, y axes */
-			req.request.desired_mode = {1,1,-1,-1,-1,-1};
+			req.request.desired_mode = {1,1,-1,-1,-1,1};
 
 			ros::service::waitForService("ConfigureVelocityController", -1);
 			confVelCon.call(req);
@@ -513,6 +519,12 @@ void FormControl::ControlLaw() {
 
 	/* publish requested velocity */
 	velConNode.publish(velConReq);
+
+	/* publish for heading controler */
+	auv_msgs::NavigationStatus headingReq;
+	headingReq.header.stamp = ros::Time::now();
+	headingReq.orientation.z = 0;
+	headingNode.publish(headingReq);
 
 	//ROS_INFO("\n\n\nKraj publishanja zeljene brzine\n\n\n");
 }
