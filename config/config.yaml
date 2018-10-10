@@ -10,7 +10,7 @@ useRobustForm: True
 
 # use external DP controller
 useExtCon: False
-kdp: 0.5
+kdp: 0.25
 
 useRepel: True
 # Force repeling controller gain
