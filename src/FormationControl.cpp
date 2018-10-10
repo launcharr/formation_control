@@ -206,6 +206,10 @@ void FormControl::onEnableController(const std_msgs::Bool::ConstPtr& enable) {
 			/* configure velocity controller for x, y axes */
 			req.request.desired_mode = {1,1,-1,-1,-1,1};
 
+			labust_msgs::EnableControl srv;
+			srv.request.enable = false;
+			ros::service::call("HDG_enable",srv);
+
 			ros::service::waitForService("ConfigureVelocityController", -1);
 			confVelCon.call(req);
 		}
