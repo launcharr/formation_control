@@ -2,10 +2,21 @@ source env_formation_veh_local.sh
 
 BYOBU_SESSION_NAME=simulation
 
-# get length of an array
-len=${#VEH_NAME[@]}
+VEH_ID=(1 2 3 4 5)
+len=${#VEH_ID[@]}
 
-#roslaunch -p $LOCAL_PORT formation_control formation_topside.launch
+for (( i=0; i<${len}; i++ ));
+do
+	if [ ${VEH_ID[$i]} -le ${#VEH_NAMES[@]} ]; then
+		VEH_NAME[$i]=${VEH_NAMES[$((${VEH_ID[$i]}-1))]}
+		VEH_PORT[$i]=${VEH_PORTS[$((${VEH_ID[$i]}-1))]}
+		VEH_IP[$i]=${VEH_IPS[$((${VEH_ID[$i]}-1))]}
+	else
+		echo "ID out of range!"
+		exit
+	fi
+done
+
 byobu new-session -d -s "$BYOBU_SESSION_NAME" "echo 1 && bash -l"
 
 # start every formation control node

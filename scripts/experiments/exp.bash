@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source exp_3veh.sh
+
 function pause() {
 	read -n 1 -p "$*"
 }
@@ -47,48 +49,36 @@ rotation:
 
 }
 
-# Kvadrat udaljenost 3m
-tx1="[0.0,0.0,3.0,3.0,0.0,0.0,0.0,3.0,3.0,0.0,-3.0,-3.0,0.0,0.0,0.0,-3.0,-3.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]"
-ty1="[0.0,3.0,3.0,0.0,0.0,-3.0,0.0,0.0,-3.0,0.0,-3.0,0.0,0.0,-3.0,0.0,0.0,3.0,3.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]"
-# Tlocrt pravilnog tetraedra duljina 5
-tx2="[0.0,0.0,1.507,4.33,0.0,0.0,0.0,1.507,4.33,0.0,-1.507,-1.507,0.0,2.8229999999999995,0.0,-4.33,-4.33,-2.8229999999999995,0.0,0.0,0.0,0.0,0.0,0.0,0.0]"
-ty2="[0.0,5.0,2.5,2.5,0.0,-5.0,0.0,-2.5,-2.5,0.0,-2.5,2.5,0.0,0.0,0.0,-2.5,2.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]"
-# Linija udaljenost 2.5m
-tx3="[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]"
-ty3="[0.0,2.5,5.0,7.5,0.0,-2.5,0.0,2.5,5.0,0.0,-5.0,-2.5,0.0,2.5,0.0,-7.5,-5.0,-2.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0]"
-# Linija udaljenost 3m
-tx4="[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]"
-ty4="[0.0,3.0,6.0,9.0,0.0,-3.0,0.0,3.0,6.0,0.0,-6.0,-3.0,0.0,3.0,0.0,-9.0,-6.0,-3.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]"
-
-
-# Choose formations
-tx=(tx1 tx2 tx3)
-ty=(ty1 ty2 ty3)
-
-angles=(45 90 180)
+angles=(180)
+#angles=(45 90 180)
 #angles=(360)
 
 #gd: n 15, e -10
 #dd: n -2, e -20
 #dl: n 18, e -55
 #gl: n 35, e -48
-positions_north=(6 12 17 10)
-positions_east=(-23 -32 -28 -20)
+positions_north=(3 9 14 7)
+positions_east=(-25 -34 -27 -22)
 pos_len=${#positions_north[@]}
+pos_len=0
 
 # amount of sleep for pos and form
-sleep_pos=45
-sleep_form=30
+sleep_pos=40
+sleep_form45=15
+sleep_form90=30
+sleep_form180=40
 num=0
 
-
 # put initial formation shape
-change_form true $tx1 $ty1 false 0.0
+eval tmpx="\$${tx[0]}"
+eval tmpy="\$${ty[0]}"
+change_form true $tmpx $tmpy false 0.0
 # start formation control
 rostopic pub /FCEnable std_msgs/Bool true --once
 
 # turn on positioning
-change_pos 10 -20
+#change_pos 7 -22
+change_pos 0 0
 
 # wati for user input when gathering finished
 pause enter
@@ -99,13 +89,17 @@ pause enter
 tx_len=${#tx[@]}
 for (( k=0; k<${tx_len}; k++ ));
 do
-	for i in angles
+	eval tmpx="\$${tx[$k]}"
+	eval tmpy="\$${ty[$k]}"
+	change_form true $tmpx $tmpy false 0.0
+	sleep 30
+	
+	for i in ${angles[@]}
 	do
-		for (( j=0; j<=$((360/$i)); j++ ));
+		for (( j=1; j<=$((360/$i)); j++ ));
 		do
-			eval tmpx="\$${tx[$k]}"
-			eval tmpy="\$${ty[$k]}"
-			change_form true $tmpx $tmpy true "$(($i * $j))" 
+			change_form true $tmpx $tmpy true "$(($i * $j))"
+			eval sleep_form="\$sleep_form$i"
 			sleep $sleep_form
 			#pause enter
 			((num++))
@@ -122,4 +116,5 @@ do
 	done
 done
 
+rostopic pub /FCEnable std_msgs/Bool true --once
 echo "Num: $num"

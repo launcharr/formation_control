@@ -3,6 +3,7 @@
     <arg name="local_address" default="10.0.10.41" />
     <arg name="local_port" default="39090" />
 	<arg name="veh_num" default="5" />
+    <arg name="logging" default="false" />
 	
 	<arg name="veh1_address"  default="10.0.100.100" />
 	<arg name="veh2_address"  default="10.0.101.100" />
@@ -127,6 +128,6 @@
         </node>
     </group>
 
-    <node pkg="rosbag" type="record" name="formation_bagging" args="--split --size=1024 -a -o formation_topside_$(arg veh_num)veh" unless="$(arg local_simulation)"/>
+    <node pkg="rosbag" type="record" name="formation_bagging" args="--split --size=1024 -a -o formation_$(arg veh_num)veh_topside" if="$(arg logging)"/>
 
 </launch>

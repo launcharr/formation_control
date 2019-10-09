@@ -5,8 +5,20 @@ BYOBU_SESSION_NAME=formation
 LOCAL_IP=10.0.10.41
 ROS2UDP_PORT=39876
 
-# get length of an array
-len=${#VEH_NAME[@]}
+VEH_ID=(1 2 3 4 5)
+len=${#VEH_ID[@]}
+
+for (( i=0; i<${len}; i++ ));
+do
+	if [ ${VEH_ID[$i]} -le ${#VEH_NAMES[@]} ]; then
+		VEH_NAME[$i]=${VEH_NAMES[$((${VEH_ID[$i]}-1))]}
+		VEH_PORT[$i]=${VEH_PORTS[$((${VEH_ID[$i]}-1))]}
+		VEH_IP[$i]=${VEH_IPS[$((${VEH_ID[$i]}-1))]}
+	else
+		echo "ID out of range!"
+		exit
+	fi
+done
 
 byobu new-session -d -s "$BYOBU_SESSION_NAME" "roslaunch -p $LOCAL_PORT formation_control formation_topside.launch local_simulation:=false veh_num:=$len local_address:=$LOCAL_IP local_port:=$ROS2UDP_PORT && bash -l"
 
@@ -23,5 +35,7 @@ do
     comm="source ~/subcultron_ws/devel/setup.bash && export ROS_MASTER_URI=http://${VEH_IP[$i]}:${VEH_PORT[$i]} && bash -l"
     byobu new-window -n "${VEH_NAME[$i]} ${VEH_PORT[$i]}" -t "formation" "$comm"
 done
+
+byobu new-window -n "command" -t "$BYOBU_SESSION_NAME" "/experiments/exp_4veh.bash && bash -l"
 
 byobu attach -t "$BYOBU_SESSION_NAME"
